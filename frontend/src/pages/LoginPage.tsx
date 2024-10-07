@@ -1,135 +1,115 @@
-// import { Link } from 'react-router-dom';
-// import { Input, Checkbox, Button } from '@nextui-org/react';
-
-// const LoginPage = () => {
-//     return (
-//         <div className="flex items-center justify-center min-h-screen bg-white">
-//             <div className="border border-gray-300 rounded-lg p-8 w-full max-w-md">
-//                 <h2 className="text-2xl font-bold mb-6 text-start text-black">Log In</h2>
-//                 <form>
-//                     <Input
-//                         type="email"
-//                         label="Email Address"
-//                         placeholder="Enter your email"
-//                         className="mb-4"
-//                     />
-//                     <Input
-//                         type="password"
-//                         label="Password"
-//                         placeholder="Enter your password"
-//                         className="mb-4"
-//                     />
-//                     <div className="flex items-center justify-between mb-4">
-//                         <Checkbox>
-//                             <div className='text-black'>
-//                                 Remember me
-//                             </div>
-//                         </Checkbox>
-//                         <Link to="/forgot-password" className="text-slate-500">
-//                             Forgot password?
-//                         </Link>
-//                     </div>
-
-//                     <Button color="primary" className="w-full mb-4 bg-black">
-//                         Log In
-//                     </Button>
-//                     <p className="text-center flex justify-center gap-2">
-//                         <div className='text-black'>
-//                             Need to create an account?{' '}
-//                         </div>
-//                         <Link to="/signup" className="text-blue-500 font-bold">
-//                             Sign Up
-//                         </Link>
-//                     </p>
-//                 </form>
-//             </div>
-//         </div>
-//     );
-// };
-
-// export default LoginPage;
-
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Checkbox, Button } from '@nextui-org/react';
+import { useForm, Controller } from 'react-hook-form';
+import { validateEmail } from '../utils/validationUtils';
+
+interface LoginFormInputs {
+  email: string;
+  password: string;
+  rememberMe: boolean;
+}
 
 const LoginPage = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    // State for form fields
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+  } = useForm<LoginFormInputs>({
+    mode: 'onChange',
+  });
 
-    // Default credentials
-    const defaultEmail = 'test@test.com';
-    const defaultPassword = 'password';
+  const onSubmit = (data: LoginFormInputs) => {
+    // Replace with your authentication logic
+    console.log(data);
+    // Navigate to home on successful login
+    navigate('/home');
+  };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Validate credentials
-        if (email === defaultEmail && password === defaultPassword) {
-            // Redirect to Home Page
-            navigate('/home');
-        } else {
-            setError('Invalid email or password');
-        }
-    };
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="border border-gray-300 rounded-lg p-8 w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6 text-start text-black">Log In</h2>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Controller
+            name="email"
+            control={control}
+            rules={{
+              required: 'Email is required',
+              validate: (value) =>
+                validateEmail(value) || 'Invalid email address',
+            }}
+            render={({ field, fieldState: { error } }) => (
+              <Input
+                {...field}
+                type="email"
+                label="Email"
+                placeholder="Enter your email"
+                className="bg-white text-black mb-4"
+                isInvalid={!!error}
+                errorMessage={error?.message}
+                variant="bordered"
+              />
+            )}
+          />
 
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-white">
-            <div className="border border-gray-300 rounded-lg p-8 w-full max-w-md">
-                <h2 className="text-2xl font-bold mb-6 text-start text-black">Log In</h2>
-                {error && (
-                    <p className="mb-4 text-center text-red-500">
-                        {error}
-                    </p>
-                )}
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <Input
-                            type="email"
-                            label="Email"
-                            placeholder="Email"
-                            className="bg-white text-black"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <Input
-                            type='password'
-                            label="Password"
-                            placeholder="Password"
-                            className="bg-white text-black"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <Checkbox><slot className='text-black'>Remember me</slot></Checkbox>
-                        <Link to="/forgot-password" className="text-black">
-                            Forgot password?
-                        </Link>
-                    </div>
-                    <Button
-                        type="submit"
-                        className="w-full mb-4 bg-black"
-                    >
-                        Log In
-                    </Button>
-                    <p className="text-center text-black">
-                        Need to create an account?{' '}
-                        <Link to="/signup" className="text-blue-500 font-bold">
-                            Sign Up
-                        </Link>
-                    </p>
-                </form>
-            </div>
-        </div>
-    );
+          <Controller
+            name="password"
+            control={control}
+            rules={{
+              required: 'Password is required',
+            }}
+            render={({ field, fieldState: { error } }) => (
+              <Input
+                {...field}
+                type="password"
+                label="Password"
+                placeholder="Enter your password"
+                className="bg-white text-black mb-4"
+                isInvalid={!!error}
+                errorMessage={error?.message}
+                variant="bordered"
+              />
+            )}
+          />
+
+          <div className="flex items-center justify-between mb-4">
+            <Controller
+              name="rememberMe"
+              control={control}
+              defaultValue={false}
+              render={({ field }) => (
+                <Checkbox
+                  isSelected={field.value}
+                  onChange={(value) => field.onChange(value)}
+                >
+                  <slot className="text-black">Remember me</slot>
+                </Checkbox>
+              )}
+            />
+            <Link to="/forgot-password" className="text-black">
+              Forgot password?
+            </Link>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full mb-4 bg-black text-white"
+            isDisabled={!isValid}
+          >
+            Log In
+          </Button>
+          <p className="text-center text-black">
+            Need to create an account?{' '}
+            <Link to="/signup" className="text-blue-500 font-bold">
+              Sign Up
+            </Link>
+          </p>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 export default LoginPage;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { Tooltip } from "@nextui-org/react";
 import {
   FiHome,
   FiPlusCircle,
@@ -11,8 +12,8 @@ import {
   FiChevronUp,
   FiChevronDown,
 } from 'react-icons/fi';
-import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarRightCollapse  } from "react-icons/tb";
-import { RiProgress5Line, RiProgress8Line  } from "react-icons/ri";
+import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarRightCollapse } from "react-icons/tb";
+import { RiProgress5Line, RiProgress8Line } from "react-icons/ri";
 import { MdCancel } from "react-icons/md";
 
 
@@ -42,17 +43,26 @@ const Sidebar = () => {
 
   return (
     <div
-      className={`flex flex-col border-r border-gray-200 text-lg p-4 transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
+      className={`flex flex-col border-r border-gray-200 text-lg p-4 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'
+        }`}
     >
       {/* Collapse Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="mb-6 focus:outline-none text-black"
+      <div>
+      <Tooltip
+        className='flex'
+        key='left'
+        placement='left'
+        content='collapse/open'
       >
-        {isCollapsed ? <TbLayoutSidebarRightCollapse /> : <TbLayoutSidebarLeftCollapse />}
-      </button>
+
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="mb-6 focus:outline-none text-black"
+        >
+          {isCollapsed ? <TbLayoutSidebarRightCollapse /> : <TbLayoutSidebarLeftCollapse />}
+        </button>
+      </Tooltip>
+      </div>
 
       {/* Menu Items and Logout Button */}
       <div className="flex flex-col flex-grow justify-between">
@@ -67,7 +77,7 @@ const Sidebar = () => {
                 {item.icon}
                 {!isCollapsed && <span className="ml-3">{item.name}</span>}
               </NavLink>
-              
+
               {/* Insert Task Management after Task Creation */}
               {index === 1 && (
                 <div className="mt-6">
@@ -85,9 +95,8 @@ const Sidebar = () => {
                   </button>
                   {/* Sub-menu with smooth transition */}
                   <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      isTaskManagementCollapsed ? 'max-h-0' : 'max-h-96'
-                    }`}
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${isTaskManagementCollapsed ? 'max-h-0' : 'max-h-96'
+                      }`}
                   >
                     {!isCollapsed && (
                       <ul className="ml-8 mt-4">

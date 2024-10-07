@@ -3,7 +3,7 @@ import Content from '../components/Contents';
 
 const HomePage = () => {
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-full bg-white">
       <Sidebar />
       <Content />
     </div>

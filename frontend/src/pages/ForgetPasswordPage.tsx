@@ -1,14 +1,28 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Button } from '@nextui-org/react';
+import { useForm, Controller } from 'react-hook-form';
+import { validateEmail } from '../utils/validationUtils';
+
+interface ForgetPasswordFormInputs {
+  email: string;
+}
 
 const ForgetPasswordPage = () => {
   const [emailSent, setEmailSent] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulate email being sent
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+  } = useForm<ForgetPasswordFormInputs>({
+    mode: 'onChange',
+  });
+
+  const onSubmit = (data: ForgetPasswordFormInputs) => {
+    // Handle password reset logic
+    console.log(data);
     setEmailSent(true);
   };
 
@@ -27,20 +41,40 @@ const ForgetPasswordPage = () => {
             <p className="mb-6 text-center text-gray-700">
               Enter your email address associated with your account
             </p>
-            <form onSubmit={handleSubmit}>
-              <Input
-                type="email"
-                label="Email Address"
-                placeholder="Enter your email"
-                className="mb-4"
-                required
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <Controller
+                name="email"
+                control={control}
+                rules={{
+                  required: 'Email is required',
+                  validate: (value) =>
+                    validateEmail(value) || 'Invalid email address',
+                }}
+                render={({ field, fieldState: { error } }) => (
+                  <Input
+                    {...field}
+                    type="email"
+                    label="Email Address"
+                    placeholder="Enter your email"
+                    className="mb-4"
+                    isInvalid={!!error}
+                    errorMessage={error?.message}
+                    variant="bordered"
+                  />
+                )}
               />
-              <Button type="submit" color="primary" className="w-full mb-4 bg-black">
+
+              <Button
+                type="submit"
+                color="primary"
+                className="w-full mb-4 bg-black"
+                isDisabled={!isValid}
+              >
                 Submit
               </Button>
               <p className="text-center text-black">
                 Remember your password?{' '}
-                <Link to="/" className="text-blue-500 text-bold">
+                <Link to="/" className="text-blue-500 font-bold">
                   Log In
                 </Link>
               </p>
@@ -52,9 +86,14 @@ const ForgetPasswordPage = () => {
               Check your email
             </h2>
             <p className="mb-6 text-center text-gray-700">
-              We have sent you a password recovery instruction to your registered email
+              We have sent you password recovery instructions to your registered
+              email
             </p>
-            <Button onClick={handleReturnToLogin} color="primary" className="w-full mb-4 bg-black">
+            <Button
+              onClick={handleReturnToLogin}
+              color="primary"
+              className="w-full mb-4 bg-black"
+            >
               Return to the Login Page
             </Button>
           </>
