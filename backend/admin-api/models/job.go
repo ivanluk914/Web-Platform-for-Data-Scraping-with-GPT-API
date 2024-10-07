@@ -156,11 +156,11 @@ func GetJobsByUserId(uid string) ([]Job, error) {
 	return jobs, nil
 }
 
-func GetJobById(jid string) (Job, error) {
+func GetJobById(jid uint64) (Job, error) {
 	var job Job
 	result := db.Where("id = ?", jid).Find(&job)
 	if result.Error != nil {
-		logger.Error("Failed to get job", zap.String("job id", jid), zap.Error(result.Error))
+		logger.Error("Failed to get job", zap.Uint64("job id", jid), zap.Error(result.Error))
 		return job, result.Error
 	}
 	return job, nil

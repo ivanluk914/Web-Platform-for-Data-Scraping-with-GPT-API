@@ -11,6 +11,9 @@ import (
 
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	healthcheck "github.com/tavsec/gin-healthcheck"
+	"github.com/tavsec/gin-healthcheck/checks"
+	hc "github.com/tavsec/gin-healthcheck/config"
 	"go.uber.org/zap"
 )
 
@@ -46,6 +49,8 @@ func main() {
 	// Use zap logger for Gin
 	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	r.Use(ginzap.RecoveryWithZap(logger, true))
+
+	healthcheck.New(r, hc.DefaultConfig(), []checks.Check{})
 
 	// Initialize middleware
 	authMiddleware := middleware.Auth0Middleware(cfg.Auth0)
