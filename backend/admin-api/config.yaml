@@ -1,0 +1,19 @@
+server:
+  address: ":8080"
+
+postgres:
+  url: "postgresql://user:password@postgres:5432/myapp"
+
+scylla:
+  hosts:
+    - "scylla:9042"
+  keyspace: "crawljob_keyspace"
+
+redis:
+  address: "redis:6379"
+
+auth0:
+  domain: "your-auth0-domain.auth0.com"
+  audience: "https://your-api-identifier"
+
+# Add any other configuration values your application might need
