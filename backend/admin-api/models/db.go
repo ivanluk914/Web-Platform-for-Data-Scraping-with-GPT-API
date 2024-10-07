@@ -3,8 +3,8 @@ package models
 import (
 	"context"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gocql/gocql"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
