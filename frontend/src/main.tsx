@@ -7,7 +7,7 @@ import './index.css'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <NextUIProvider>
-      <main className="w-screen h-screen p-8 flex items-start justify-center">
+      <main className="w-screen h-screen p-8 bg-white">
         <App />
       </main>
     </NextUIProvider>
