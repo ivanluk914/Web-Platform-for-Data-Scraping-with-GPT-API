@@ -10,6 +10,7 @@ import (
 	"admin-api/models"
 	"admin-api/services"
 
+	"github.com/gin-contrib/cors"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	healthcheck "github.com/tavsec/gin-healthcheck"
@@ -51,6 +52,8 @@ func main() {
 	// Use zap logger for Gin
 	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	r.Use(ginzap.RecoveryWithZap(logger, true))
+
+	r.Use(cors.Default())
 
 	healthcheck.New(r, hc.DefaultConfig(), []checks.Check{})
 
