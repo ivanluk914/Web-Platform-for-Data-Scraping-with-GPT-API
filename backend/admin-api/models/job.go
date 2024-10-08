@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/bytedance/sonic"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -13,33 +14,37 @@ import (
 type OutputType int64
 
 const (
-	OutputTypeJson     OutputType = 1
-	OutputTypeCsv      OutputType = 2
-	OutputTypeGpt      OutputType = 3
-	OutputTypeMarkdown OutputType = 4
+	OutputTypeUnknown OutputType = iota
+	OutputTypeJson
+	OutputTypeCsv
+	OutputTypeGpt
+	OutputTypeMarkdown
 )
 
 type SourceType int64
 
 const (
-	SourceTypeUrl SourceType = 1
+	SourceTypeUnknown SourceType = iota
+	SourceTypeUrl
 )
 
 type TargetType int64
 
 const (
-	TargetTypeAuto  TargetType = 1
-	TargetTypeXpath TargetType = 2
-	TargetTypeQuery TargetType = 3
+	TargetTypeUnknown TargetType = iota
+	TargetTypeAuto    TargetType = 1
+	TargetTypeXpath   TargetType = 2
+	TargetTypeQuery   TargetType = 3
 )
 
 type JobPeriod int64
 
 const (
-	JobPeriodHourly  JobPeriod = 1
-	JobPeriodDaily   JobPeriod = 2
-	JobPeriodWeekly  JobPeriod = 3
-	JobPeriodMonthly JobPeriod = 4
+	JobPeriodUnknown JobPeriod = iota
+	JobPeriodHourly
+	JobPeriodDaily
+	JobPeriodWeekly
+	JobPeriodMonthly
 )
 
 type UrlSource struct {
@@ -102,10 +107,11 @@ type TaskDefinition struct {
 type JobStatus int64
 
 const (
-	JobStatusCreated  JobStatus = 1
-	JobStatusRunning  JobStatus = 2
-	JobStatusComplete JobStatus = 3
-	JobStatusFailed   JobStatus = 4
+	JobStatusUnknown JobStatus = iota
+	JobStatusCreated
+	JobStatusRunning
+	JobStatusComplete
+	JobStatusFailed
 )
 
 // Scan implements the sql.Scanner interface
@@ -126,13 +132,15 @@ func (r JobStatus) Value() (driver.Value, error) {
 // UnmarshalJSON implements the json.Unmarshaler interface
 func (r *JobStatus) UnmarshalJSON(data []byte) error {
 	var v int64
-	if err := json.Unmarshal(data, &v); err != nil {
+	if err := sonic.Unmarshal(data, &v); err != nil {
 		return err
 	}
 	switch JobStatus(v) {
 	case JobStatusCreated, JobStatusRunning, JobStatusComplete, JobStatusFailed:
 		*r = JobStatus(v)
 		return nil
+	case JobStatusUnknown:
+		return fmt.Errorf("JobStatus must not be empty")
 	default:
 		return fmt.Errorf("invalid JobStatus value: %d", v)
 	}
@@ -150,26 +158,26 @@ func GetJobsByUserId(uid string) ([]Job, error) {
 	var jobs []Job
 	result := db.Where("owner = ?", uid).Find(&jobs)
 	if result.Error != nil {
-		logger.Error("Failed to get jobs for user", zap.String("user id", uid), zap.Error(result.Error))
+		zap.L().Error("Failed to get jobs for user", zap.String("user id", uid), zap.Error(result.Error))
 		return nil, result.Error
 	}
 	return jobs, nil
 }
 
-func GetJobById(jid uint64) (Job, error) {
-	var job Job
-	result := db.Where("id = ?", jid).Find(&job)
+func GetJobById(jid uint64) (*Job, error) {
+	var job *Job
+	result := db.Where("id = ?", jid).First(&job)
 	if result.Error != nil {
-		logger.Error("Failed to get job", zap.Uint64("job id", jid), zap.Error(result.Error))
-		return job, result.Error
+		zap.L().Error("Failed to get job", zap.Uint64("job id", jid), zap.Error(result.Error))
+		return nil, result.Error
 	}
 	return job, nil
 }
 
 func CreateJob(job Job) error {
-	result := db.Create(job)
+	result := db.Create(&job)
 	if result.Error != nil {
-		logger.Error("Failed to create job", zap.Any("job", job), zap.Error(result.Error))
+		zap.L().Error("Failed to create job", zap.Any("job", job), zap.Error(result.Error))
 		return result.Error
 	}
 	return nil
@@ -178,7 +186,7 @@ func CreateJob(job Job) error {
 func UpdateJob(job Job) error {
 	result := db.Model(&job).Updates(job)
 	if result.Error != nil {
-		logger.Error("Failed to update job", zap.Any("job", job), zap.Error(result.Error))
+		zap.L().Error("Failed to update job", zap.Any("job", job), zap.Error(result.Error))
 		return result.Error
 	}
 	return nil
