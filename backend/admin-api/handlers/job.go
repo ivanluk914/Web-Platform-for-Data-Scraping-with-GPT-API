@@ -1,58 +1,50 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
-	"strconv"
 
 	"admin-api/models"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
-func GetJobs(c *gin.Context) {
-	logger := zap.L()
-	jobs, err := models.GetJobsByUserId(c.Param("userId"))
+type JobService interface {
+	GetJobsByUserId(ctx context.Context, userId string) ([]models.Job, error)
+	GetJobById(ctx context.Context, jobID string) (*models.Job, error)
+	CreateJob(ctx context.Context, task models.TaskDefinition, userID string) (*models.Job, error)
+	UpdateJob(ctx context.Context, task models.TaskDefinition, userID string, jobID string) (*models.Job, error)
+}
+
+type JobHandler struct {
+	service JobService
+}
+
+func SetupJobRoutes(r *gin.RouterGroup, service JobService) {
+	handler := &JobHandler{service: service}
+
+	jobs := r.Group("/job")
+	{
+		jobs.GET("", handler.GetJobs)
+		jobs.GET("/:jobId", handler.GetJob)
+		jobs.POST("", handler.CreateJob)
+		jobs.PUT("/:jobId", handler.UpdateJob)
+	}
+}
+
+func (h *JobHandler) GetJobs(c *gin.Context) {
+	jobs, err := h.service.GetJobsByUserId(c, c.Param("userId"))
 	if err != nil {
-		logger.Error("Failed find jobs", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
 	c.JSON(http.StatusOK, jobs)
 }
 
-func GetJob(c *gin.Context) {
-	logger := zap.L()
-
-	jobId, err := strconv.ParseUint(c.Param("userId"), 10, 64)
+func (h *JobHandler) GetJob(c *gin.Context) {
+	job, err := h.service.GetJobById(c, c.Param("jobId"))
 	if err != nil {
-		logger.Error("Failed to parse job id", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	j, err := models.GetJobFromCache(c, jobId)
-	if err != nil {
-		logger.Error("Error while getting job from cache", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if j != nil {
-		c.JSON(http.StatusOK, j)
-		return
-	}
-
-	job, err := models.GetJobById(jobId)
-	if err != nil {
-		logger.Error("Error while getting job from db", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := models.SetJobCache(c, &job); err != nil {
-		logger.Error("Error while setting job in cache", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -60,30 +52,15 @@ func GetJob(c *gin.Context) {
 	c.JSON(http.StatusOK, job)
 }
 
-func CreateJob(c *gin.Context) {
-	logger := zap.L()
+func (h *JobHandler) CreateJob(c *gin.Context) {
 	var task models.TaskDefinition
 	if err := c.ShouldBindJSON(&task); err != nil {
-		logger.Error("Task definition is not valid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	taskJson, err := json.Marshal(task)
+	job, err := h.service.CreateJob(c, task, c.Param("userId"))
 	if err != nil {
-		logger.Error("Failed to marshal task definition", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	job := models.Job{
-		Owner:          c.Param("userId"),
-		TaskDefinition: taskJson,
-		Status:         models.JobStatusCreated,
-	}
-
-	if err := models.CreateJob(job); err != nil {
-		logger.Error("Failed to create job", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -91,47 +68,18 @@ func CreateJob(c *gin.Context) {
 	c.JSON(http.StatusCreated, job)
 }
 
-func UpdateJob(c *gin.Context) {
-	logger := zap.L()
+func (h *JobHandler) UpdateJob(c *gin.Context) {
 	var task models.TaskDefinition
 	if err := c.ShouldBindJSON(&task); err != nil {
-		logger.Error("Task definition is not valid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	taskJson, err := json.Marshal(task)
+	job, err := h.service.UpdateJob(c, task, c.Param("userId"), c.Param("jobId"))
 	if err != nil {
-		logger.Error("Failed to marshal task definition", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	jobId, err := strconv.ParseUint(c.Param("userId"), 10, 64)
-	if err != nil {
-		logger.Error("Failed to parse job id", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	job := models.Job{
-		Model:          gorm.Model{ID: uint(jobId)},
-		Owner:          c.Param("userId"),
-		TaskDefinition: taskJson,
-		Status:         models.JobStatusCreated,
-	}
-
-	if err := models.ClearJobCache(c, jobId); err != nil {
-		logger.Error("Failed to update job", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := models.UpdateJob(job); err != nil {
-		logger.Error("Failed to update job", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, job)
+	c.JSON(http.StatusOK, job)
 }

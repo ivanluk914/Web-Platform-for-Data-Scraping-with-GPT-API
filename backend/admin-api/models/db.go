@@ -59,3 +59,19 @@ func InitDB(postgresURL string, scyllaHosts []string, redisAddress string) error
 	logger.Info("Database connections initialized successfully")
 	return nil
 }
+
+func SetDB(database *gorm.DB) {
+	db = database
+}
+
+func GetDB() *gorm.DB {
+	return db
+}
+
+func SetRedis(rc *redis.Client) {
+	redisClient = rc
+}
+
+func GetRedis() *redis.Client {
+	return redisClient
+}

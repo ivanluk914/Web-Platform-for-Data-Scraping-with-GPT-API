@@ -8,12 +8,14 @@ import (
 	"admin-api/handlers"
 	"admin-api/middleware"
 	"admin-api/models"
+	"admin-api/services"
 
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	healthcheck "github.com/tavsec/gin-healthcheck"
 	"github.com/tavsec/gin-healthcheck/checks"
 	hc "github.com/tavsec/gin-healthcheck/config"
+	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 )
 
@@ -55,6 +57,8 @@ func main() {
 	// Initialize middleware
 	authMiddleware := middleware.Auth0Middleware(cfg.Auth0)
 
+	jobService := services.NewJobService(logger)
+
 	// Setup routes
 	api := r.Group("/api")
 	api.Use(authMiddleware)
@@ -62,10 +66,7 @@ func main() {
 	api.GET("/users", handlers.GetUsers)
 	api.POST("/users", handlers.CreateUser)
 
-	api.GET("/users/:userId/job", handlers.GetJobs)
-	api.GET("/users/:userId/job/:jobId", handlers.GetJob)
-	api.POST("/users/:userId/job", handlers.CreateJob)
-	api.PUT("/users/:userId/job/:jobId", handlers.UpdateJob)
+	handlers.SetupJobRoutes(api, jobService)
 
 	// Start server
 	logger.Info("Starting server", zap.String("address", cfg.Server.Address))

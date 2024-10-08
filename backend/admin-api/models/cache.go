@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -33,7 +34,7 @@ func GetJobFromCache(ctx context.Context, jobID uint64) (*Job, error) {
 	}
 
 	var job Job
-	err = json.Unmarshal([]byte(jobJSON), &job)
+	err = sonic.UnmarshalString(jobJSON, &job)
 	if err != nil {
 		return nil, err
 	}
