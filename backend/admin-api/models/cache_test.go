@@ -25,84 +25,84 @@ func setupMiniRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client) {
 	return mr, client
 }
 
-func TestSetJobCache(t *testing.T) {
+func TestSetTaskCache(t *testing.T) {
 	mr, client := setupMiniRedis(t)
 	defer mr.Close()
 	redisClient = client
 
 	ctx := context.Background()
-	job := &Job{
+	task := &Task{
 		Model:          gorm.Model{ID: 1},
 		Owner:          "test",
 		TaskDefinition: json.RawMessage("{}"),
 		TaskId:         "test",
-		Status:         JobStatusCreated,
+		Status:         TaskStatusCreated,
 	}
 
-	err := SetJobCache(ctx, job)
+	err := SetTaskCache(ctx, task)
 	assert.NoError(t, err)
 
-	// Verify the job was set in Redis
-	val, err := mr.Get("job:1")
+	// Verify the task was set in Redis
+	val, err := mr.Get("task:1")
 	assert.NoError(t, err)
 
-	var storedJob Job
-	err = sonic.UnmarshalString(val, &storedJob)
+	var storedTask Task
+	err = sonic.UnmarshalString(val, &storedTask)
 	assert.NoError(t, err)
-	assert.Equal(t, job, &storedJob)
+	assert.Equal(t, task, &storedTask)
 
 	// Verify expiration was set (allowing for small timing differences)
-	ttl := mr.TTL("job:1")
+	ttl := mr.TTL("task:1")
 	assert.InDelta(t, time.Hour.Seconds(), ttl.Seconds(), 1)
 }
 
-func TestClearJobCache(t *testing.T) {
+func TestClearTaskCache(t *testing.T) {
 	mr, client := setupMiniRedis(t)
 	defer mr.Close()
 	redisClient = client
 
 	ctx := context.Background()
-	jobID := uint64(1)
+	taskID := uint64(1)
 
-	// Set a job in the cache first
-	mr.Set("job:1", "{\"ID\":1,\"Title\":\"Test Job\"}")
+	// Set a task in the cache first
+	mr.Set("task:1", "{\"ID\":1,\"Title\":\"Test Task\"}")
 
-	err := ClearJobCache(ctx, jobID)
+	err := ClearTaskCache(ctx, taskID)
 	assert.NoError(t, err)
 
-	// Verify the job was removed from Redis
-	exists := mr.Exists("job:1")
+	// Verify the task was removed from Redis
+	exists := mr.Exists("task:1")
 	assert.False(t, exists)
 }
 
-func TestGetJobFromCache(t *testing.T) {
+func TestGetTaskFromCache(t *testing.T) {
 	mr, client := setupMiniRedis(t)
 	defer mr.Close()
 	redisClient = client
 
 	ctx := context.Background()
-	jobID := uint64(1)
+	taskID := uint64(1)
 
-	t.Run("Job found in cache", func(t *testing.T) {
-		job := &Job{
+	t.Run("Task found in cache", func(t *testing.T) {
+		task := &Task{
 			Model:          gorm.Model{ID: 1},
 			Owner:          "test",
 			TaskDefinition: json.RawMessage("{}"),
 			TaskId:         "test",
-			Status:         JobStatusCreated,
+			Status:         TaskStatusCreated,
 		}
-		jobJSON, _ := sonic.Marshal(job)
-		mr.Set("job:1", string(jobJSON))
+		taskJSON, _ := sonic.Marshal(task)
+		mr.Set("task:1", string(taskJSON))
 
-		result, err := GetJobFromCache(ctx, jobID)
+		result, err := GetTaskFromCache(ctx, taskID)
 		assert.NoError(t, err)
-		assert.Equal(t, job, result)
+		assert.Equal(t, task, result)
 	})
 
-	t.Run("Job not found in cache", func(t *testing.T) {
-		mr.Del("job:1")
+	t.Run("Task not found in cache", func(t *testing.T) {
+		mr.Del("task:1")
 
-		result, err := GetJobFromCache(ctx, jobID)
+		result, err := GetTaskFromCache(ctx, taskID)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -110,7 +110,7 @@ func TestGetJobFromCache(t *testing.T) {
 	t.Run("Redis error", func(t *testing.T) {
 		mr.Close()
 
-		result, err := GetJobFromCache(ctx, jobID)
+		result, err := GetTaskFromCache(ctx, taskID)
 		assert.Error(t, err)
 		assert.Nil(t, result)
 	})

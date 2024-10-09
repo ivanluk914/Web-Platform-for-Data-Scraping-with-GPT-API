@@ -18,40 +18,40 @@ import (
 	"admin-api/models"
 )
 
-// MockJobService is a mock implementation of the job service
-type MockJobService struct {
+// MockTaskService is a mock implementation of the task service
+type MockTaskService struct {
 	mock.Mock
 }
 
-func (m *MockJobService) GetJobsByUserId(ctx context.Context, userId string) ([]models.Job, error) {
+func (m *MockTaskService) GetTasksByUserId(ctx context.Context, userId string) ([]models.Task, error) {
 	args := m.Called(ctx, userId)
-	return args.Get(0).([]models.Job), args.Error(1)
+	return args.Get(0).([]models.Task), args.Error(1)
 }
 
-func (m *MockJobService) GetJobById(ctx context.Context, jobId string) (*models.Job, error) {
-	args := m.Called(ctx, jobId)
-	return args.Get(0).(*models.Job), args.Error(1)
+func (m *MockTaskService) GetTaskById(ctx context.Context, taskId string) (*models.Task, error) {
+	args := m.Called(ctx, taskId)
+	return args.Get(0).(*models.Task), args.Error(1)
 }
 
-func (m *MockJobService) CreateJob(ctx context.Context, task models.TaskDefinition, userID string) (*models.Job, error) {
+func (m *MockTaskService) CreateTask(ctx context.Context, task models.TaskDefinition, userID string) (*models.Task, error) {
 	args := m.Called(ctx, task, userID)
-	return args.Get(0).(*models.Job), args.Error(1)
+	return args.Get(0).(*models.Task), args.Error(1)
 }
 
-func (m *MockJobService) UpdateJob(ctx context.Context, task models.TaskDefinition, userID string, jobID string) (*models.Job, error) {
-	args := m.Called(ctx, task, userID, jobID)
-	return args.Get(0).(*models.Job), args.Error(1)
+func (m *MockTaskService) UpdateTask(ctx context.Context, task models.TaskDefinition, userID string, taskID string) (*models.Task, error) {
+	args := m.Called(ctx, task, userID, taskID)
+	return args.Get(0).(*models.Task), args.Error(1)
 }
 
-func setupTestRouter() (*gin.Engine, *MockJobService) {
+func setupTestRouter() (*gin.Engine, *MockTaskService) {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	mockService := new(MockJobService)
-	SetupJobRoutes(r.Group("/"), mockService)
+	mockService := new(MockTaskService)
+	SetupTaskRoutes(r.Group("/"), mockService)
 	return r, mockService
 }
 
-func TestGetJobs(t *testing.T) {
+func TestGetTasks(t *testing.T) {
 	r, mockService := setupTestRouter()
 	server := httptest.NewServer(r)
 	defer server.Close()
@@ -61,24 +61,24 @@ func TestGetJobs(t *testing.T) {
 		taskJSON1, _ := sonic.Marshal(task1)
 		task2 := mockTaskDefinition()
 		taskJSON2, _ := sonic.Marshal(task2)
-		mockJobs := []models.Job{
-			{Owner: "user1", TaskId: "task1", Status: models.JobStatusCreated, TaskDefinition: taskJSON1},
-			{Owner: "user1", TaskId: "task2", Status: models.JobStatusFailed, TaskDefinition: taskJSON2},
+		mockTasks := []models.Task{
+			{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON1},
+			{Owner: "user1", TaskId: "task2", Status: models.TaskStatusFailed, TaskDefinition: taskJSON2},
 		}
-		mockService.On("GetJobsByUserId", mock.Anything, "user1").Return(mockJobs, nil).Once()
+		mockService.On("GetTasksByUserId", mock.Anything, "user1").Return(mockTasks, nil).Once()
 
-		resp, err := http.Get(fmt.Sprintf("%s/users/user1/job", server.URL))
+		resp, err := http.Get(fmt.Sprintf("%s/users/user1/task", server.URL))
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var response []models.Job
+		var response []models.Task
 		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
 		assert.NoError(t, err)
-		assert.Equal(t, mockJobs, response)
+		assert.Equal(t, mockTasks, response)
 	})
 }
 
-func TestGetJob(t *testing.T) {
+func TestGetTask(t *testing.T) {
 	r, mockService := setupTestRouter()
 	server := httptest.NewServer(r)
 	defer server.Close()
@@ -86,21 +86,21 @@ func TestGetJob(t *testing.T) {
 	t.Run("Successful retrieval", func(t *testing.T) {
 		task := mockTaskDefinition()
 		taskJSON, _ := sonic.Marshal(task)
-		mockJob := &models.Job{Owner: "user1", TaskId: "task1", Status: models.JobStatusCreated, TaskDefinition: taskJSON}
-		mockService.On("GetJobById", mock.Anything, "1").Return(mockJob, nil).Once()
+		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON}
+		mockService.On("GetTaskById", mock.Anything, "1").Return(mockTask, nil).Once()
 
-		resp, err := http.Get(fmt.Sprintf("%s/users/user1/job/1", server.URL))
+		resp, err := http.Get(fmt.Sprintf("%s/users/user1/task/1", server.URL))
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var response models.Job
+		var response models.Task
 		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
 		assert.NoError(t, err)
-		assert.Equal(t, mockJob, &response)
+		assert.Equal(t, mockTask, &response)
 	})
 }
 
-func TestCreateJob(t *testing.T) {
+func TestCreateTask(t *testing.T) {
 	r, mockService := setupTestRouter()
 	server := httptest.NewServer(r)
 	defer server.Close()
@@ -108,21 +108,21 @@ func TestCreateJob(t *testing.T) {
 	t.Run("Successful creation", func(t *testing.T) {
 		task := mockTaskDefinition()
 		taskJSON, _ := sonic.Marshal(task)
-		mockJob := &models.Job{Owner: "user1", TaskId: "task1", Status: models.JobStatusCreated, TaskDefinition: taskJSON}
-		mockService.On("CreateJob", mock.Anything, task, "user1").Return(mockJob, nil).Once()
+		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON}
+		mockService.On("CreateTask", mock.Anything, task, "user1").Return(mockTask, nil).Once()
 
-		resp, err := http.Post(fmt.Sprintf("%s/users/user1/job", server.URL), "application/json", bytes.NewBuffer(taskJSON))
+		resp, err := http.Post(fmt.Sprintf("%s/users/user1/task", server.URL), "application/json", bytes.NewBuffer(taskJSON))
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-		var response models.Job
+		var response models.Task
 		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
 		assert.NoError(t, err)
-		assert.Equal(t, mockJob, &response)
+		assert.Equal(t, mockTask, &response)
 	})
 }
 
-func TestUpdateJob(t *testing.T) {
+func TestUpdateTask(t *testing.T) {
 	r, mockService := setupTestRouter()
 	server := httptest.NewServer(r)
 	defer server.Close()
@@ -130,19 +130,19 @@ func TestUpdateJob(t *testing.T) {
 	t.Run("Successful update", func(t *testing.T) {
 		task := mockTaskDefinitionWithRandomPeriod()
 		taskJSON, _ := sonic.Marshal(task)
-		mockJob := &models.Job{Owner: "user1", TaskId: "task1", Status: models.JobStatusRunning, TaskDefinition: taskJSON}
-		mockService.On("UpdateJob", mock.Anything, task, "user1", "1").Return(mockJob, nil).Once()
+		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusRunning, TaskDefinition: taskJSON}
+		mockService.On("UpdateTask", mock.Anything, task, "user1", "1").Return(mockTask, nil).Once()
 
-		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/users/user1/job/1", server.URL), bytes.NewBuffer(taskJSON))
+		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/users/user1/task/1", server.URL), bytes.NewBuffer(taskJSON))
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var response models.Job
+		var response models.Task
 		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
 		assert.NoError(t, err)
-		assert.Equal(t, mockJob, &response)
+		assert.Equal(t, mockTask, &response)
 	})
 }
 
@@ -175,18 +175,18 @@ func mockTaskDefinition() models.TaskDefinition {
 				Prompt: "Summarize the content",
 			},
 		},
-		Period: models.JobPeriodDaily,
+		Period: models.TaskPeriodDaily,
 	}
 }
 
 // mockTaskDefinitionWithRandomPeriod generates a mock TaskDefinition with a random period
 func mockTaskDefinitionWithRandomPeriod() models.TaskDefinition {
 	task := mockTaskDefinition()
-	periods := []models.JobPeriod{
-		models.JobPeriodHourly,
-		models.JobPeriodDaily,
-		models.JobPeriodWeekly,
-		models.JobPeriodMonthly,
+	periods := []models.TaskPeriod{
+		models.TaskPeriodHourly,
+		models.TaskPeriodDaily,
+		models.TaskPeriodWeekly,
+		models.TaskPeriodMonthly,
 	}
 	task.Period = periods[rand.Intn(len(periods))]
 	return task
