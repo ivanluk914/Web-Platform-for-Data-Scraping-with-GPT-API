@@ -23,7 +23,7 @@ type JobHandler struct {
 func SetupJobRoutes(r *gin.RouterGroup, service JobService) {
 	handler := &JobHandler{service: service}
 
-	jobs := r.Group("/job")
+	jobs := r.Group("/users/:userId/job")
 	{
 		jobs.GET("", handler.GetJobs)
 		jobs.GET("/:jobId", handler.GetJob)

@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// Initialize database connections
-	err = models.InitDB(cfg.Postgres.URL, cfg.Scylla.Hosts, cfg.Redis.Address)
+	err = models.InitDB(cfg.Postgres, cfg.Scylla, cfg.Redis)
 	if err != nil {
 		logger.Fatal("Failed to initialize database connections", zap.Error(err))
 	}
