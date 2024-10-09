@@ -1,6 +1,7 @@
 package models
 
 import (
+	"admin-api/config"
 	"context"
 
 	"github.com/gocql/gocql"
@@ -17,12 +18,12 @@ var (
 	logger        *zap.Logger
 )
 
-func InitDB(postgresURL string, scyllaHosts []string, redisAddress string) error {
+func InitDB(postgresConfig config.PostgresConfig, scyllaConfig config.ScyllaConfig, redisConfig config.RedisConfig) error {
 	logger = zap.L()
 
 	// Initialize PostgreSQL
 	var err error
-	db, err = gorm.Open(postgres.Open(postgresURL), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open(postgresConfig.URL), &gorm.Config{})
 	if err != nil {
 		logger.Error("Failed to connect to PostgreSQL", zap.Error(err))
 		return err
@@ -35,8 +36,8 @@ func InitDB(postgresURL string, scyllaHosts []string, redisAddress string) error
 	}
 
 	// Initialize ScyllaDB
-	cluster := gocql.NewCluster(scyllaHosts...)
-	cluster.Keyspace = "your_keyspace"
+	cluster := gocql.NewCluster(scyllaConfig.Hosts...)
+	cluster.Keyspace = scyllaConfig.Keyspace
 	scyllaSession, err = cluster.CreateSession()
 	if err != nil {
 		logger.Error("Failed to connect to ScyllaDB", zap.Error(err))
@@ -45,7 +46,7 @@ func InitDB(postgresURL string, scyllaHosts []string, redisAddress string) error
 
 	// Initialize Redis
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: redisAddress,
+		Addr: redisConfig.Address,
 	})
 
 	// Test Redis connection

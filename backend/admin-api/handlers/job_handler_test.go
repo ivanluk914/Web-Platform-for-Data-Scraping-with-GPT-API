@@ -47,7 +47,7 @@ func setupTestRouter() (*gin.Engine, *MockJobService) {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 	mockService := new(MockJobService)
-	SetupJobRoutes(r.Group("/users/:userId"), mockService)
+	SetupJobRoutes(r.Group("/"), mockService)
 	return r, mockService
 }
 
