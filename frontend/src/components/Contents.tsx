@@ -3,8 +3,8 @@ import ProfilePage from '../pages/ProfilePage';
 
 const Content = () => {
   return (
-    <div className="flex-1 p-4">
-      <div className="border rounded-lg p-4">
+    <div className="flex justify-start border rounded-lg m-4">
+      <div className="p-4">
         <Routes>
           <Route path="/" element={<h1>Home Content</h1>} />
           <Route path="task-creation" element={<h1>Task Creation</h1>} />
