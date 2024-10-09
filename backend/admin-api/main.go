@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"time"
 
 	"admin-api/config"
@@ -27,7 +26,7 @@ func main() {
 	var err error
 	logger, err = zap.NewProduction()
 	if err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
+		logger.Fatal("Failed to initialize logger", zap.Error(err))
 	}
 	defer logger.Sync()
 
@@ -37,7 +36,7 @@ func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		logger.Fatal("Failed to load configuration", zap.Error(err))
 	}
 
 	// Initialize database connections
@@ -58,7 +57,7 @@ func main() {
 	healthcheck.New(r, hc.DefaultConfig(), []checks.Check{})
 
 	// Initialize middleware
-	authMiddleware := middleware.Auth0Middleware(cfg.Auth0)
+	authMiddleware := middleware.Auth0Middleware(logger, cfg.Auth0)
 
 	jobService := services.NewJobService(logger)
 

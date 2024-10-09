@@ -13,7 +13,5 @@ redis:
   address: "redis:6379"
 
 auth0:
-  domain: "your-auth0-domain.auth0.com"
-  audience: "https://your-api-identifier"
-
-# Add any other configuration values your application might need
+  domain: "dev-dp4vp0xpt7cspfcl.us.auth0.com"
+  audience: "https://scrapmaster.com/api/login"
