@@ -59,7 +59,7 @@ func main() {
 	// Initialize middleware
 	authMiddleware := middleware.Auth0Middleware(logger, cfg.Auth0)
 
-	jobService := services.NewJobService(logger)
+	taskService := services.NewTaskService(logger)
 
 	// Setup routes
 	api := r.Group("/api")
@@ -68,7 +68,7 @@ func main() {
 	api.GET("/users", handlers.GetUsers)
 	api.POST("/users", handlers.CreateUser)
 
-	handlers.SetupJobRoutes(api, jobService)
+	handlers.SetupTaskRoutes(api, taskService)
 
 	// Start server
 	logger.Info("Starting server", zap.String("address", cfg.Server.Address))

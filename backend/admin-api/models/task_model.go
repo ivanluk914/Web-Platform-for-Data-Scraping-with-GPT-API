@@ -37,14 +37,14 @@ const (
 	TargetTypeQuery   TargetType = 3
 )
 
-type JobPeriod int64
+type TaskPeriod int64
 
 const (
-	JobPeriodUnknown JobPeriod = iota
-	JobPeriodHourly
-	JobPeriodDaily
-	JobPeriodWeekly
-	JobPeriodMonthly
+	TaskPeriodUnknown TaskPeriod = iota
+	TaskPeriodHourly
+	TaskPeriodDaily
+	TaskPeriodWeekly
+	TaskPeriodMonthly
 )
 
 type UrlSource struct {
@@ -101,92 +101,92 @@ type TaskDefinition struct {
 	Source []UrlSource `json:"source"`
 	Target []Target    `json:"target"`
 	Output []Output    `json:"output"`
-	Period JobPeriod   `json:"period"`
+	Period TaskPeriod  `json:"period"`
 }
 
-type JobStatus int64
+type TaskStatus int64
 
 const (
-	JobStatusUnknown JobStatus = iota
-	JobStatusCreated
-	JobStatusRunning
-	JobStatusComplete
-	JobStatusFailed
+	TaskStatusUnknown TaskStatus = iota
+	TaskStatusCreated
+	TaskStatusRunning
+	TaskStatusComplete
+	TaskStatusFailed
 )
 
 // Scan implements the sql.Scanner interface
-func (r *JobStatus) Scan(value interface{}) error {
+func (r *TaskStatus) Scan(value interface{}) error {
 	intValue, ok := value.(int64)
 	if !ok {
-		return errors.New("invalid value for JobStatus")
+		return errors.New("invalid value for TaskStatus")
 	}
-	*r = JobStatus(intValue)
+	*r = TaskStatus(intValue)
 	return nil
 }
 
 // Value implements the driver.Valuer interface
-func (r JobStatus) Value() (driver.Value, error) {
+func (r TaskStatus) Value() (driver.Value, error) {
 	return int64(r), nil
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface
-func (r *JobStatus) UnmarshalJSON(data []byte) error {
+func (r *TaskStatus) UnmarshalJSON(data []byte) error {
 	var v int64
 	if err := sonic.Unmarshal(data, &v); err != nil {
 		return err
 	}
-	switch JobStatus(v) {
-	case JobStatusCreated, JobStatusRunning, JobStatusComplete, JobStatusFailed:
-		*r = JobStatus(v)
+	switch TaskStatus(v) {
+	case TaskStatusCreated, TaskStatusRunning, TaskStatusComplete, TaskStatusFailed:
+		*r = TaskStatus(v)
 		return nil
-	case JobStatusUnknown:
-		return fmt.Errorf("JobStatus must not be empty")
+	case TaskStatusUnknown:
+		return fmt.Errorf("TaskStatus must not be empty")
 	default:
-		return fmt.Errorf("invalid JobStatus value: %d", v)
+		return fmt.Errorf("invalid TaskStatus value: %d", v)
 	}
 }
 
-type Job struct {
+type Task struct {
 	gorm.Model
 	Owner          string          `json:"owner" gorm:"index:idx_owner"`
 	TaskDefinition json.RawMessage `gorm:"type:jsonb" json:"task_definition"`
 	TaskId         string          `json:"task_id" gorm:"index:idx_task_id"`
-	Status         JobStatus       `json:"status"`
+	Status         TaskStatus      `json:"status"`
 }
 
-func GetJobsByUserId(uid string) ([]Job, error) {
-	var jobs []Job
-	result := db.Where("owner = ?", uid).Find(&jobs)
+func GetTasksByUserId(uid string) ([]Task, error) {
+	var tasks []Task
+	result := db.Where("owner = ?", uid).Find(&tasks)
 	if result.Error != nil {
-		zap.L().Error("Failed to get jobs for user", zap.String("user id", uid), zap.Error(result.Error))
+		zap.L().Error("Failed to get tasks for user", zap.String("user id", uid), zap.Error(result.Error))
 		return nil, result.Error
 	}
-	return jobs, nil
+	return tasks, nil
 }
 
-func GetJobById(jid uint64) (*Job, error) {
-	var job *Job
-	result := db.Where("id = ?", jid).First(&job)
+func GetTaskById(jid uint64) (*Task, error) {
+	var task *Task
+	result := db.Where("id = ?", jid).First(&task)
 	if result.Error != nil {
-		zap.L().Error("Failed to get job", zap.Uint64("job id", jid), zap.Error(result.Error))
+		zap.L().Error("Failed to get task", zap.Uint64("task id", jid), zap.Error(result.Error))
 		return nil, result.Error
 	}
-	return job, nil
+	return task, nil
 }
 
-func CreateJob(job Job) error {
-	result := db.Create(&job)
+func CreateTask(task Task) error {
+	result := db.Create(&task)
 	if result.Error != nil {
-		zap.L().Error("Failed to create job", zap.Any("job", job), zap.Error(result.Error))
+		zap.L().Error("Failed to create task", zap.Any("task", task), zap.Error(result.Error))
 		return result.Error
 	}
 	return nil
 }
 
-func UpdateJob(job Job) error {
-	result := db.Model(&job).Updates(job)
+func UpdateTask(task Task) error {
+	result := db.Model(&task).Updates(task)
 	if result.Error != nil {
-		zap.L().Error("Failed to update job", zap.Any("job", job), zap.Error(result.Error))
+		zap.L().Error("Failed to update task", zap.Any("task", task), zap.Error(result.Error))
 		return result.Error
 	}
 	return nil
