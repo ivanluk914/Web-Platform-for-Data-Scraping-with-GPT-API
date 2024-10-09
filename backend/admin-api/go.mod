@@ -4,8 +4,9 @@ go 1.22.6
 
 require (
 	github.com/alicebob/miniredis/v2 v2.33.0
-	github.com/auth0-community/go-auth0 v1.0.0
+	github.com/auth0/go-jwt-middleware/v2 v2.2.2
 	github.com/bytedance/sonic v1.12.3
+	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-contrib/zap v1.1.4
 	github.com/gin-gonic/gin v1.10.0
 	github.com/gocql/gocql v1.7.0
@@ -15,7 +16,6 @@ require (
 	github.com/tavsec/gin-healthcheck v1.6.3
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.12
@@ -88,6 +88,7 @@ require (
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
+	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
