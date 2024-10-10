@@ -23,12 +23,12 @@ type TaskHandler struct {
 func SetupTaskRoutes(r *gin.RouterGroup, service TaskService) {
 	handler := &TaskHandler{service: service}
 
-	tasks := r.Group("/users/:userId/task")
+	userTasks := r.Group("/user/:userId/task")
 	{
-		tasks.GET("", handler.GetTasks)
-		tasks.GET("/:taskId", handler.GetTask)
-		tasks.POST("", handler.CreateTask)
-		tasks.PUT("/:taskId", handler.UpdateTask)
+		userTasks.GET("", handler.GetTasks)
+		userTasks.GET("/:taskId", handler.GetTask)
+		userTasks.POST("", handler.CreateTask)
+		userTasks.PUT("/:taskId", handler.UpdateTask)
 	}
 }
 

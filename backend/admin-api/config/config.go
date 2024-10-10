@@ -4,6 +4,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	EnvLocal = "local"
+	EnvProd  = "prod"
+)
+
 type Config struct {
 	Server   ServerConfig
 	Postgres PostgresConfig
@@ -14,6 +19,7 @@ type Config struct {
 
 type ServerConfig struct {
 	Address string
+	Env     string
 }
 
 type PostgresConfig struct {
@@ -30,14 +36,17 @@ type RedisConfig struct {
 }
 
 type Auth0Config struct {
-	Domain   string
-	Audience string
+	Domain       string
+	Audience     string
+	ClientID     string
+	ClientSecret string
 }
 
 func Load() (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
@@ -48,5 +57,19 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	if viper.Get("ENV") == EnvLocal {
+		cfg.Server.Env = EnvLocal
+		if clientID, ok := viper.Get("Auth0ClientID").(string); ok {
+			cfg.Auth0.ClientID = clientID
+		}
+		if clientSecret, ok := viper.Get("Auth0ClientSecret").(string); ok {
+			cfg.Auth0.ClientSecret = clientSecret
+		}
+	}
+
 	return &cfg, nil
+}
+
+func (c *ServerConfig) IsProd() bool {
+	return c.Env == EnvProd
 }

@@ -29,7 +29,7 @@ func (c *JWTClaims) Validate(ctx context.Context) error {
 	return nil
 }
 
-func Auth0Middleware(logger *zap.Logger, cfg config.Auth0Config) gin.HandlerFunc {
+func JWTValidationMiddleware(logger *zap.Logger, cfg config.Auth0Config) gin.HandlerFunc {
 	customClaims := func() validator.CustomClaims {
 		return &JWTClaims{}
 	}

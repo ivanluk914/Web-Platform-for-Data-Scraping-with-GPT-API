@@ -47,11 +47,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - POSTGRES_URL=postgresql://user:password@postgres:5432/myapp
-      - REDIS_ADDRESS=redis:6379
-      - SCYLLA_HOSTS=scylla
-      - AUTH0_DOMAIN=your-auth0-domain
-      - AUTH0_AUDIENCE=your-auth0-audience
+      - ENV=local
+      - Auth0ClientID=
+      - Auth0ClientSecret=
     depends_on:
       postgres:
         condition: service_healthy

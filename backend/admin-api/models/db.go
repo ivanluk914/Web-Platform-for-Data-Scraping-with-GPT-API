@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/gocql/gocql"
+	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
@@ -30,7 +31,7 @@ func InitDB(postgresConfig config.PostgresConfig, scyllaConfig config.ScyllaConf
 	}
 
 	// Auto Migrate the schema
-	if err := db.AutoMigrate(&User{}); err != nil {
+	if err := migrateSchemas(); err != nil {
 		logger.Error("Failed to auto migrate schema", zap.Error(err))
 		return err
 	}
@@ -75,4 +76,11 @@ func SetRedis(rc *redis.Client) {
 
 func GetRedis() *redis.Client {
 	return redisClient
+}
+
+func migrateSchemas() error {
+	if err := db.AutoMigrate(&Task{}); err != nil {
+		return errors.Wrap(err, "Failed to auto migrate Task schema")
+	}
+	return nil
 }
