@@ -15,6 +15,7 @@ type Config struct {
 	Scylla   ScyllaConfig
 	Redis    RedisConfig
 	Auth0    Auth0Config
+	Otel     OtelConfig
 }
 
 type ServerConfig struct {
@@ -42,6 +43,10 @@ type Auth0Config struct {
 	ClientSecret string
 }
 
+type OtelConfig struct {
+	Endpoint string
+}
+
 func Load() (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -57,14 +62,14 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	if viper.Get("ENV") == EnvLocal {
-		cfg.Server.Env = EnvLocal
-		if clientID, ok := viper.Get("Auth0ClientID").(string); ok {
-			cfg.Auth0.ClientID = clientID
-		}
-		if clientSecret, ok := viper.Get("Auth0ClientSecret").(string); ok {
-			cfg.Auth0.ClientSecret = clientSecret
-		}
+	if env := viper.GetString("ENV"); env != "" {
+		cfg.Server.Env = env
+	}
+	if clientID, ok := viper.Get("Auth0ClientID").(string); ok {
+		cfg.Auth0.ClientID = clientID
+	}
+	if clientSecret, ok := viper.Get("Auth0ClientSecret").(string); ok {
+		cfg.Auth0.ClientSecret = clientSecret
 	}
 
 	return &cfg, nil
