@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
 import Sidebar from '../components/SideBar';
 import Content from '../components/Contents';
+import React from 'react'
 
 const HomePage = () => {
   useEffect(() => {
