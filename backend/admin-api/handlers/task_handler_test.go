@@ -67,7 +67,7 @@ func TestGetTasks(t *testing.T) {
 		}
 		mockService.On("GetTasksByUserId", mock.Anything, "user1").Return(mockTasks, nil).Once()
 
-		resp, err := http.Get(fmt.Sprintf("%s/users/user1/task", server.URL))
+		resp, err := http.Get(fmt.Sprintf("%s/user/user1/task", server.URL))
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -89,7 +89,7 @@ func TestGetTask(t *testing.T) {
 		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON}
 		mockService.On("GetTaskById", mock.Anything, "1").Return(mockTask, nil).Once()
 
-		resp, err := http.Get(fmt.Sprintf("%s/users/user1/task/1", server.URL))
+		resp, err := http.Get(fmt.Sprintf("%s/user/user1/task/1", server.URL))
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -111,7 +111,7 @@ func TestCreateTask(t *testing.T) {
 		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON}
 		mockService.On("CreateTask", mock.Anything, task, "user1").Return(mockTask, nil).Once()
 
-		resp, err := http.Post(fmt.Sprintf("%s/users/user1/task", server.URL), "application/json", bytes.NewBuffer(taskJSON))
+		resp, err := http.Post(fmt.Sprintf("%s/user/user1/task", server.URL), "application/json", bytes.NewBuffer(taskJSON))
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
@@ -133,7 +133,7 @@ func TestUpdateTask(t *testing.T) {
 		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusRunning, TaskDefinition: taskJSON}
 		mockService.On("UpdateTask", mock.Anything, task, "user1", "1").Return(mockTask, nil).Once()
 
-		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/users/user1/task/1", server.URL), bytes.NewBuffer(taskJSON))
+		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/user/user1/task/1", server.URL), bytes.NewBuffer(taskJSON))
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)

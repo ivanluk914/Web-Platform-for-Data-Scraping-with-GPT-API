@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"admin-api/clients"
 	"admin-api/config"
 	"admin-api/handlers"
 	"admin-api/middleware"
@@ -46,6 +47,9 @@ func main() {
 	}
 
 	// Initialize router
+	if cfg.Server.IsProd() {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r := gin.Default()
 
 	// Use zap logger for Gin
@@ -56,18 +60,22 @@ func main() {
 
 	healthcheck.New(r, hc.DefaultConfig(), []checks.Check{})
 
-	// Initialize middleware
-	authMiddleware := middleware.Auth0Middleware(logger, cfg.Auth0)
+	// Configure dependencies
+	auth0Client, err := clients.NewAuthClient(logger, cfg.Auth0)
+	if err != nil {
+		logger.Fatal("Failed to initialize Auth0 client", zap.Error(err))
+	}
 
 	taskService := services.NewTaskService(logger)
+	userService := services.NewUserService(logger, auth0Client)
 
 	// Setup routes
 	api := r.Group("/api")
-	api.Use(authMiddleware)
+	if cfg.Server.IsProd() {
+		api.Use(middleware.JWTValidationMiddleware(logger, cfg.Auth0))
+	}
 
-	api.GET("/users", handlers.GetUsers)
-	api.POST("/users", handlers.CreateUser)
-
+	handlers.SetupUserRoutes(api, userService)
 	handlers.SetupTaskRoutes(api, taskService)
 
 	// Start server

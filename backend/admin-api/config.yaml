@@ -1,5 +1,6 @@
 server:
   address: ":8080"
+  env: "prod"
 
 postgres:
   url: "postgresql://user:password@postgres:5432/myapp"
