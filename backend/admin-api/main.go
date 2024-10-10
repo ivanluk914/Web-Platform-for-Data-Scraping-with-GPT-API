@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"time"
@@ -31,16 +30,13 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/host"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -111,40 +107,6 @@ func main() {
 
 	handlers.SetupUserRoutes(api, userService)
 	handlers.SetupTaskRoutes(api, taskService)
-
-	name := "go.opentelemetry.io/contrib/examples/otel-collector"
-	tracer := otel.Tracer(name)
-	meter := otel.Meter(name)
-
-	// Attributes represent additional key-value descriptors that can be bound
-	// to a metric observer or recorder.
-	commonAttrs := []attribute.KeyValue{
-		attribute.String("attrA", "chocolate"),
-		attribute.String("attrB", "raspberry"),
-		attribute.String("attrC", "vanilla"),
-	}
-
-	runCount, err := meter.Int64Counter("run", metric.WithDescription("The number of times the iteration ran"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Work begins
-	ctx, span := tracer.Start(
-		ctx,
-		"CollectorExporter-Example",
-		trace.WithAttributes(commonAttrs...))
-	defer span.End()
-	for i := 0; i < 10; i++ {
-		_, iSpan := tracer.Start(ctx, fmt.Sprintf("Sample-%d", i))
-		runCount.Add(ctx, 1, metric.WithAttributes(commonAttrs...))
-		log.Printf("Doing really hard work (%d / 10)\n", i+1)
-
-		<-time.After(time.Second)
-		iSpan.End()
-	}
-
-	log.Printf("Done!")
 
 	// Start server
 	logger.Info("Starting server", zap.String("address", cfg.Server.Address))
