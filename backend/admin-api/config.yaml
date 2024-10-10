@@ -16,3 +16,6 @@ redis:
 auth0:
   domain: "dev-dp4vp0xpt7cspfcl.us.auth0.com"
   audience: "https://scrapmaster.com/api/login"
+
+otel:
+  endpoint: "otel-collector:4317"

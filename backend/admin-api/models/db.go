@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 var (
@@ -28,6 +29,10 @@ func InitDB(postgresConfig config.PostgresConfig, scyllaConfig config.ScyllaConf
 	if err != nil {
 		logger.Error("Failed to connect to PostgreSQL", zap.Error(err))
 		return err
+	}
+
+	if err := db.Use(tracing.NewPlugin()); err != nil {
+		logger.Error("Failed to initialize opentelemetry tracing plugin", zap.Error(err))
 	}
 
 	// Auto Migrate the schema
@@ -76,6 +81,14 @@ func SetRedis(rc *redis.Client) {
 
 func GetRedis() *redis.Client {
 	return redisClient
+}
+
+func SetScylla(rc *gocql.Session) {
+	scyllaSession = rc
+}
+
+func GetScylla() *gocql.Session {
+	return scyllaSession
 }
 
 func migrateSchemas() error {
