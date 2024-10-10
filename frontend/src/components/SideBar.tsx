@@ -15,7 +15,8 @@ import {
 import { TbLayoutSidebarLeftCollapse, TbLayoutSidebarRightCollapse } from "react-icons/tb";
 import { RiProgress5Line, RiProgress8Line } from "react-icons/ri";
 import { MdCancel } from "react-icons/md";
-
+import { useAuth0 } from '@auth0/auth0-react';
+import React from 'react'
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -36,8 +37,10 @@ const Sidebar = () => {
     { name: 'Cancelled', icon: <MdCancel />, path: '/home/task-management/cancelled' },
   ];
 
+  const { logout } = useAuth0();
   const handleLogout = () => {
     // Add logout logic here
+    logout();
     navigate('/');
   };
 
