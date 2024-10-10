@@ -1,7 +1,7 @@
 // src/pages/AdminPage.tsx
 import React from 'react';
 import { Tab, Tabs } from '@nextui-org/react';
-import UserManagement from '../components/UserManagement';
+import UserManagement from '../components/user_management/UserManagement';
 
 const AdminPage: React.FC = () => {
   return (

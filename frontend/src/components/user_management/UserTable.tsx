@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Key } from "react";
 import {
   Table,
   TableHeader,
@@ -29,9 +29,9 @@ import {
 } from "@nextui-org/react";
 import {
   BsThreeDotsVertical,
-  BsPlusLg,
   BsChevronDown,
   BsSearch,
+  BsDownload,
 } from "react-icons/bs";
 
 const columns = [
@@ -52,226 +52,226 @@ const statusOptions = [
 ];
 
 const initialUsers = [
-    {
-        user_id: 1,
-        name: "Tony Reichert",
-        role: "Member",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-        email: "tony.reichert@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 2,
-        name: "Zoey Lang",
-        role: "User",
-        created_at: "09/10/2024",
-        last_login: "10/10/2024",
-        status: "disabled",
-        avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-        email: "zoey.lang@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 3,
-        name: "Jane Fisher",
-        role: "User",
-        created_at: "07/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?u=a04258114e29026702d",
-        email: "jane.fisher@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 4,
-        name: "William Howard",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?u=a048581f4e29026701d",
-        email: "william.howard@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 5,
-        name: "Kristen Copper",
-        role: "Admin",
-        created_at: "01/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?u=a092581d4ef9026700d",
-        email: "kristen.cooper@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 6,
-        name: "Brian Kim",
-        role: "Admin",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-        email: "brian.kim@example.com",
-        status: "active",
-        user_origin: "sso"
-    },
-    {
-        user_id: 7,
-        name: "Michael Hunt",
-        role: "User",
-        created_at: "10/09/2024",
-        last_login: "10/10/2024",
-        status: "disabled",
-        avatar: "https://i.pravatar.cc/150?u=a042581f4e29027007d",
-        email: "michael.hunt@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 8,
-        name: "Samantha Brooks",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?u=a042581f4e27027008d",
-        email: "samantha.brooks@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 9,
-        name: "Frank Harrison",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=4",
-        email: "frank.harrison@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 10,
-        name: "Emma Adams",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=5",
-        email: "emma.adams@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 11,
-        name: "Brandon Stevens",
-        role: "Member",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=8",
-        email: "brandon.stevens@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 12,
-        name: "Megan Richards",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "disabled",
-        avatar: "https://i.pravatar.cc/150?img=10",
-        email: "megan.richards@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 13,
-        name: "Oliver Scott",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=12",
-        email: "oliver.scott@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 14,
-        name: "Grace Allen",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=16",
-        email: "grace.allen@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 15,
-        name: "Noah Carter",
-        role: "Member",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "disabled",
-        avatar: "https://i.pravatar.cc/150?img=15",
-        email: "noah.carter@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 16,
-        name: "Ava Perez",
-        role: "Admin",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=20",
-        email: "ava.perez@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 17,
-        name: "Liam Johnson",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=33",
-        email: "liam.johnson@example.com",
-        user_origin: "acc/pw"
-    },
-    {
-        user_id: 18,
-        name: "Sophia Taylor",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=29",
-        email: "sophia.taylor@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 19,
-        name: "Lucas Harris",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "disabled",
-        avatar: "https://i.pravatar.cc/150?img=50",
-        email: "lucas.harris@example.com",
-        user_origin: "sso"
-    },
-    {
-        user_id: 20,
-        name: "Mia Robinson",
-        role: "User",
-        created_at: "10/10/2024",
-        last_login: "10/10/2024",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=45",
-        email: "mia.robinson@example.com",
-        user_origin: "acc/pw"
-    },
+  {
+    user_id: 1,
+    name: "Tony Reichert",
+    role: "Member",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
+    email: "tony.reichert@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 2,
+    name: "Zoey Lang",
+    role: "User",
+    created_at: "09/10/2024",
+    last_login: "10/10/2024",
+    status: "disabled",
+    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+    email: "zoey.lang@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 3,
+    name: "Jane Fisher",
+    role: "User",
+    created_at: "07/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?u=a04258114e29026702d",
+    email: "jane.fisher@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 4,
+    name: "William Howard",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?u=a048581f4e29026701d",
+    email: "william.howard@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 5,
+    name: "Kristen Copper",
+    role: "Admin",
+    created_at: "01/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?u=a092581d4ef9026700d",
+    email: "kristen.cooper@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 6,
+    name: "Brian Kim",
+    role: "Admin",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
+    email: "brian.kim@example.com",
+    status: "active",
+    user_origin: "sso"
+  },
+  {
+    user_id: 7,
+    name: "Michael Hunt",
+    role: "User",
+    created_at: "10/09/2024",
+    last_login: "10/10/2024",
+    status: "disabled",
+    avatar: "https://i.pravatar.cc/150?u=a042581f4e29027007d",
+    email: "michael.hunt@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 8,
+    name: "Samantha Brooks",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?u=a042581f4e27027008d",
+    email: "samantha.brooks@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 9,
+    name: "Frank Harrison",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=4",
+    email: "frank.harrison@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 10,
+    name: "Emma Adams",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=5",
+    email: "emma.adams@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 11,
+    name: "Brandon Stevens",
+    role: "Member",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=8",
+    email: "brandon.stevens@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 12,
+    name: "Megan Richards",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "disabled",
+    avatar: "https://i.pravatar.cc/150?img=10",
+    email: "megan.richards@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 13,
+    name: "Oliver Scott",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=12",
+    email: "oliver.scott@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 14,
+    name: "Grace Allen",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=16",
+    email: "grace.allen@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 15,
+    name: "Noah Carter",
+    role: "Member",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "disabled",
+    avatar: "https://i.pravatar.cc/150?img=15",
+    email: "noah.carter@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 16,
+    name: "Ava Perez",
+    role: "Admin",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=20",
+    email: "ava.perez@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 17,
+    name: "Liam Johnson",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=33",
+    email: "liam.johnson@example.com",
+    user_origin: "acc/pw"
+  },
+  {
+    user_id: 18,
+    name: "Sophia Taylor",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=29",
+    email: "sophia.taylor@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 19,
+    name: "Lucas Harris",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "disabled",
+    avatar: "https://i.pravatar.cc/150?img=50",
+    email: "lucas.harris@example.com",
+    user_origin: "sso"
+  },
+  {
+    user_id: 20,
+    name: "Mia Robinson",
+    role: "User",
+    created_at: "10/10/2024",
+    last_login: "10/10/2024",
+    status: "active",
+    avatar: "https://i.pravatar.cc/150?img=45",
+    email: "mia.robinson@example.com",
+    user_origin: "acc/pw"
+  },
 ];
 
 const statusColorMap: Record<string, ChipProps["color"]> = {
@@ -288,6 +288,7 @@ const INITIAL_VISIBLE_COLUMNS = [
   "email",
   "status",
   "actions",
+  "user_origin"
 ];
 
 type UserType = typeof initialUsers[0];
@@ -311,10 +312,11 @@ const UserTable = () => {
 
   const [userList, setUserList] = React.useState<UserType[]>(initialUsers);
 
-  
+
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<UserType | null>(null);
+  const [selectedAllPages, setSelectedAllPages] = React.useState(false);
+  const [selectedUserIds, setSelectedUserIds] = React.useState<Set<string>>(new Set());
   const [editedName, setEditedName] = React.useState("");
   const [editedRole, setEditedRole] = React.useState("");
   const [editedEmail, setEditedEmail] = React.useState("");
@@ -334,7 +336,11 @@ const UserTable = () => {
 
     if (hasSearchFilter) {
       filteredUsers = filteredUsers.filter((user) =>
-        user.name.toLowerCase().includes(filterValue.toLowerCase())
+        user.user_id.toString().includes(filterValue.toString()) ||
+        user.name.toLowerCase().includes(filterValue.toLowerCase()) ||
+        user.role.toLowerCase().includes(filterValue.toLowerCase()) ||
+        user.email.toLowerCase().includes(filterValue.toLowerCase()) ||
+        user.user_origin.toLowerCase().includes(filterValue.toLowerCase())
       );
     }
     if (
@@ -409,10 +415,7 @@ const UserTable = () => {
                 <DropdownMenu
                   onAction={(key) => {
                     if (key === "edit") {
-                      setSelectedUser(user);
-                      setEditedName(user.name);
-                      setEditedRole(user.role);
-                      setEditedEmail(user.email);
+                      handleOpenModal(user);
                       onOpen();
                     } else if (key === "enable" || key === "disable") {
                       // Update user's status
@@ -420,20 +423,17 @@ const UserTable = () => {
                         prevUserList.map((u) =>
                           u.user_id === user.user_id
                             ? {
-                                ...u,
-                                status:
-                                  key === "enable" ? "active" : "disabled",
-                              }
+                              ...u,
+                              status:
+                                key === "enable" ? "active" : "disabled",
+                            }
                             : u
                         )
                       );
                     }
                   }}
                 >
-                    {/* @ts-ignore */}
-                  {user.user_origin !== "sso" && (
-                    <DropdownItem key="edit">Edit</DropdownItem>
-                  )}
+                  <DropdownItem key="edit">Edit</DropdownItem>
                   {/* @ts-ignore */}
                   {user.status === "active" ? (
                     <DropdownItem key="disable">Disable</DropdownItem>
@@ -485,6 +485,76 @@ const UserTable = () => {
     setPage(1);
   }, []);
 
+  const handleSelectionChange = (keys: Selection) => {
+    if (keys === "all") {
+      // Select all users across all pages
+      setSelectedAllPages(true);
+      setSelectedUserIds(new Set(filteredItems.map((item) => item.user_id.toString())));
+      setSelectedKeys("all");
+    } else if ((keys as Set<Key>).size === 0) {
+      // Deselect all users across all pages
+      setSelectedAllPages(false);
+      setSelectedUserIds(new Set()); // Clear all selections
+      setSelectedKeys(new Set());    // Clear selection on UI
+    } else {
+      setSelectedAllPages(false);
+      const newSelectedUserIds = new Set(selectedUserIds);
+      const currentPageUserIds = new Set(items.map((item) => item.user_id.toString()));
+
+      const keysSet = keys as Set<string>;
+
+      if (keysSet.size > (selectedKeys as Set<string>).size) {
+        // Adding selections
+        keysSet.forEach((key) => newSelectedUserIds.add(key));
+      } else {
+        // Removing selections
+        currentPageUserIds.forEach((id) => {
+          if (!keysSet.has(id)) {
+            newSelectedUserIds.delete(id);
+          }
+        });
+      }
+
+      setSelectedUserIds(newSelectedUserIds);
+      setSelectedKeys(new Set(newSelectedUserIds));
+    }
+  };
+
+
+  const downloadCSV = (data: UserType[], filename: string) => {
+    const headers = columns.map(column => column.name).join(',');
+    const csvData = data.map(user =>
+      columns.map(column =>
+        user[column.uid as keyof UserType]
+      ).join(',')
+    ).join('\n');
+
+    const csvContent = `${headers}\n${csvData}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleDownload = () => {
+    let dataToDownload;
+    if (selectedAllPages) {
+      dataToDownload = filteredItems;
+    } else if (selectedUserIds.size > 0) {
+      dataToDownload = filteredItems.filter(item => selectedUserIds.has(item.user_id.toString()));
+    } else {
+      dataToDownload = filteredItems;
+    }
+    downloadCSV(dataToDownload, 'users_data.csv');
+  };
+
   const topContent = React.useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
@@ -492,12 +562,13 @@ const UserTable = () => {
           <Input
             isClearable
             className="w-full sm:max-w-[44%]"
-            placeholder="Search by name..."
+            placeholder="Search by id, name, role, email, or user origin..."
             startContent={<BsSearch />}
             value={filterValue}
             onClear={() => onClear()}
             onValueChange={onSearchChange}
           />
+
           <div className="flex gap-3">
             <Dropdown>
               <DropdownTrigger className="hidden sm:flex">
@@ -547,8 +618,26 @@ const UserTable = () => {
                 ))}
               </DropdownMenu>
             </Dropdown>
-            <Button color="primary" endContent={<BsPlusLg />}>
-              Add New
+            <Button
+              color="primary"
+              onPress={() => handleBulkStatusChange("active")}
+              isDisabled={selectedUserIds.size === 0}  // Disable when no users are selected
+            >
+              Enable Selected
+            </Button>
+            <Button
+              color="danger"
+              onPress={() => handleBulkStatusChange("disabled")}
+              isDisabled={selectedUserIds.size === 0}  // Disable when no users are selected
+            >
+              Disable Selected
+            </Button>
+            <Button
+              color="secondary"
+              endContent={<BsDownload />}
+              onPress={handleDownload}
+            >
+              Download CSV
             </Button>
           </div>
         </div>
@@ -578,6 +667,7 @@ const UserTable = () => {
     onRowsPerPageChange,
     userList.length,
     hasSearchFilter,
+    selectedKeys,
   ]);
 
   const bottomContent = React.useMemo(() => {
@@ -640,6 +730,27 @@ const UserTable = () => {
     setEditedEmail("");
   };
 
+  const handleOpenModal = (user: UserType) => {
+    setSelectedUser(user);
+    setEditedName(user.name);
+    setEditedRole(user.role);
+    setEditedEmail(user.email);
+    onOpen();
+  };
+
+  const handleBulkStatusChange = (newStatus: string) => {
+    setUserList((prevUserList) =>
+      prevUserList.map((user) =>
+        selectedUserIds.has(user.user_id.toString())
+          ? { ...user, status: newStatus }
+          : user
+      )
+    );
+    // Clear selection after updating
+    setSelectedKeys(new Set());
+    setSelectedUserIds(new Set());
+  };
+
   return (
     <>
       <Table
@@ -655,7 +766,7 @@ const UserTable = () => {
         sortDescriptor={sortDescriptor}
         topContent={topContent}
         topContentPlacement="outside"
-        onSelectionChange={setSelectedKeys}
+        onSelectionChange={handleSelectionChange}
         onSortChange={setSortDescriptor}
       >
         <TableHeader columns={headerColumns}>
@@ -681,47 +792,49 @@ const UserTable = () => {
       </Table>
 
       <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent>
+        <ModalContent>
           {(onClose) => (
             <>
-        <ModalHeader>
-          <h2>Edit User</h2>
-        </ModalHeader>
-        <ModalBody>
-          <Input
-            label="Name"
-            value={editedName}
-            onChange={(e) => setEditedName(e.target.value)}
-          />
-          <Select
-            label="Role"
-            placeholder="Select Role"
-            value={editedRole}
-            onChange={(e) => setEditedRole(e.target.value)}
-          >
-            <SelectItem key="User" value="User">
-              User
-            </SelectItem>
-            <SelectItem key="Member" value="Member">
-              Member
-            </SelectItem>
-            <SelectItem key="Admin" value="Admin">
-              Admin
-            </SelectItem>
-          </Select>
-          <Input
-            label="Email"
-            value={editedEmail}
-            onChange={(e) => setEditedEmail(e.target.value)}
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="flat" onPress={onClose}>
-            Cancel
-          </Button>
-          <Button onPress={handleUpdateUser}>Update</Button>
-        </ModalFooter>
-        </>
+              <ModalHeader>
+                <h2>Edit User</h2>
+              </ModalHeader>
+              <ModalBody>
+                <Input
+                  isReadOnly={selectedUser?.user_origin === "sso"}
+                  label="Name"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                />
+                <Select
+                  label="Role"
+                  placeholder="Select Role"
+                  selectedKeys={[editedRole]}
+                  onChange={(e) => setEditedRole(e.target.value)}
+                >
+                  <SelectItem key="User" value="User">
+                    User
+                  </SelectItem>
+                  <SelectItem key="Member" value="Member">
+                    Member
+                  </SelectItem>
+                  <SelectItem key="Admin" value="Admin">
+                    Admin
+                  </SelectItem>
+                </Select>
+                <Input
+                  isReadOnly={selectedUser?.user_origin === "sso"}
+                  label="Email"
+                  value={editedEmail}
+                  onChange={(e) => setEditedEmail(e.target.value)}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  Cancel
+                </Button>
+                <Button onPress={handleUpdateUser}>Update</Button>
+              </ModalFooter>
+            </>
           )}
         </ModalContent>
       </Modal>
