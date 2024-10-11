@@ -1,12 +1,15 @@
 package models
 
 import (
-	"admin-api/config"
 	"context"
+
+	"admin-api/config"
 
 	"github.com/gocql/gocql"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gocql/gocql/otelgocql"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,9 +23,8 @@ var (
 	logger        *zap.Logger
 )
 
-func InitDB(postgresConfig config.PostgresConfig, scyllaConfig config.ScyllaConfig, redisConfig config.RedisConfig) error {
-	logger = zap.L()
-
+func InitDB(ctx context.Context, logger *zap.Logger, postgresConfig config.PostgresConfig,
+	scyllaConfig config.ScyllaConfig, redisConfig config.RedisConfig) error {
 	// Initialize PostgreSQL
 	var err error
 	db, err = gorm.Open(postgres.Open(postgresConfig.URL), &gorm.Config{})
@@ -44,7 +46,11 @@ func InitDB(postgresConfig config.PostgresConfig, scyllaConfig config.ScyllaConf
 	// Initialize ScyllaDB
 	cluster := gocql.NewCluster(scyllaConfig.Hosts...)
 	cluster.Keyspace = scyllaConfig.Keyspace
-	scyllaSession, err = cluster.CreateSession()
+	scyllaSession, err = otelgocql.NewSessionWithTracing(
+		ctx,
+		cluster,
+	)
+
 	if err != nil {
 		logger.Error("Failed to connect to ScyllaDB", zap.Error(err))
 		return err
@@ -55,11 +61,12 @@ func InitDB(postgresConfig config.PostgresConfig, scyllaConfig config.ScyllaConf
 		Addr: redisConfig.Address,
 	})
 
-	// Test Redis connection
-	ctx := context.Background()
-	_, err = redisClient.Ping(ctx).Result()
-	if err != nil {
-		logger.Error("Failed to connect to Redis", zap.Error(err))
+	if err := redisotel.InstrumentTracing(redisClient); err != nil {
+		logger.Error("Failed to initialize redis tracing", zap.Error(err))
+		return err
+	}
+	if err := redisotel.InstrumentMetrics(redisClient); err != nil {
+		logger.Error("Failed to initialize redis metrics", zap.Error(err))
 		return err
 	}
 
