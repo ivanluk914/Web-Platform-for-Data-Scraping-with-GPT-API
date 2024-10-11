@@ -40,7 +40,10 @@ const Sidebar = () => {
   const { logout } = useAuth0();
   const handleLogout = () => {
     // Add logout logic here
-    logout();
+    localStorage.removeItem('hasVisitedHomePage');
+    logout({
+      logoutParams: { returnTo: window.location.origin }
+    });
     navigate('/');
   };
 
