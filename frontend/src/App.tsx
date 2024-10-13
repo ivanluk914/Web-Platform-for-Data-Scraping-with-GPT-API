@@ -1,30 +1,20 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Auth0ProviderWithNavigate } from './providers/auth-provider';
 import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
 import HomePage from './pages/HomePage';
-import ForgetPasswordPage from './pages/ForgetPasswordPage';
-import { CallbackPage } from "./pages/callback-page";
-import React from 'react'
-import { Auth0Provider } from "@auth0/auth0-react";
+import { CallbackPage } from "./pages/CallbackPage";
 
 function App() {
   return (
-    <Auth0Provider
-      domain="dev-dp4vp0xpt7cspfcl.us.auth0.com"
-      clientId="EisLX6gz0Hsa6vVrSIIvmczWKdUEYqzy"
-      authorizationParams={{
-        redirect_uri: "http://localhost:5173/callback"
-      }} >
-      <Router>
+    <Router>
+      <Auth0ProviderWithNavigate>
         <Routes>
           <Route path="/" element={<LoginPage />} />
-          <Route path="/callback" element={<CallbackPage />} />          
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/forgot-password" element={<ForgetPasswordPage />} />
+          <Route path="/callback" element={<CallbackPage />} />
           <Route path="/home/*" element={<HomePage />} />
         </Routes>
-      </Router>
-    </Auth0Provider>
+      </Auth0ProviderWithNavigate>
+    </Router>
   );
 }
 

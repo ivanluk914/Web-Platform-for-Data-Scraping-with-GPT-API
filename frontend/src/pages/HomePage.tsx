@@ -1,10 +1,8 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import Sidebar from '../components/SideBar';
-import Content from '../components/Contents';
-import React from 'react'
+import Layout from '../components/Layout';
 
-const HomePage = () => {
+const HomePage: React.FC = () => {
   useEffect(() => {
     const hasVisited = localStorage.getItem('hasVisitedHomePage');
     
@@ -15,11 +13,10 @@ const HomePage = () => {
   }, []);
 
   return (
-    <div className="flex h-full bg-white">
-      <Sidebar />
-      <Content />
+    <>
+      <Layout />
       <Toaster position="top-center" reverseOrder={false} toastOptions={{duration: 5000}}/>
-    </div>
+    </>
   );
 };
 
