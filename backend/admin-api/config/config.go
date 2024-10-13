@@ -65,10 +65,10 @@ func Load() (*Config, error) {
 	if env := viper.GetString("ENV"); env != "" {
 		cfg.Server.Env = env
 	}
-	if clientID, ok := viper.Get("Auth0ClientID").(string); ok {
+	if clientID, ok := viper.Get("AUTH0_CLIENT_ID").(string); ok {
 		cfg.Auth0.ClientID = clientID
 	}
-	if clientSecret, ok := viper.Get("Auth0ClientSecret").(string); ok {
+	if clientSecret, ok := viper.Get("AUTH0_CLIENT_SECRET").(string); ok {
 		cfg.Auth0.ClientSecret = clientSecret
 	}
 

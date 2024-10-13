@@ -40,7 +40,7 @@ import (
 )
 
 var (
-	serviceName = semconv.ServiceNameKey.String("admin-api")
+	serviceName = "admin-api"
 )
 
 func main() {
@@ -70,7 +70,7 @@ func main() {
 	defer cleanUp()
 
 	// Initialize database connections
-	err = models.InitDB(cfg.Postgres, cfg.Scylla, cfg.Redis)
+	err = models.InitDB(ctx, logger, cfg.Postgres, cfg.Scylla, cfg.Redis)
 	if err != nil {
 		logger.Fatal("Failed to initialize database connections", zap.Error(err))
 	}
@@ -102,7 +102,7 @@ func main() {
 	api := r.Group("/api")
 	if cfg.Server.IsProd() {
 		api.Use(middleware.JWTValidationMiddleware(logger, cfg.Auth0))
-		api.Use(otelgin.Middleware(serviceName.Value.AsString()))
+		api.Use(otelgin.Middleware(serviceName))
 	}
 
 	handlers.SetupUserRoutes(api, userService)
@@ -122,10 +122,10 @@ func initTelemetry(ctx context.Context, logger *zap.Logger, cfg config.OtelConfi
 		logger.Fatal("Failed to initialize connection", zap.Error(err))
 	}
 
-	res, err := resource.New(ctx, resource.WithAttributes(serviceName))
-	if err != nil {
-		logger.Fatal("Failed to initialize resource", zap.Error(err))
-	}
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String(serviceName),
+	)
 
 	// Initialize tracer
 	tracer, err := initTracerProvider(ctx, res, conn)

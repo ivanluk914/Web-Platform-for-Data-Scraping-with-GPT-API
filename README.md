@@ -34,15 +34,29 @@ Ensure you have the following installed:
 
 ### Backend
 
-1. Start the backend services:
+1. Fetch client id and client secret from Auth0 dashboard and set to .env file:
 
 ```sh
-docker-compose up --build
+cp .env.example .env
+```
+
+2. Start the backend services:
+
+```sh
+make start
 ```
 
 This command starts all necessary services: API, databases, and observability tools.
 
-2. The API will be available at `http://localhost:8080`
+3. The API will be available at `http://localhost:8080`
+
+4. View logs:
+
+```sh
+make logs
+```
+
+or visit Grafana dashboard: http://localhost:3000/
 
 ### Frontend (if applicable)
 
