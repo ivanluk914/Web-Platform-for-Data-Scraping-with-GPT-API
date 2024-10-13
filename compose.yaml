@@ -1,4 +1,47 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: ./backend/admin-api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=local
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      scylla-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: ./frontend/Dockerfile
+  #   ports:
+  #     - "5173:5173"
+  #   depends_on:
+  #     api:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:5173"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
   postgres:
     image: postgres:16.4-alpine
     environment:
@@ -24,49 +67,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # frontend:
-  #   build:
-  #     context: .
-  #     dockerfile: ./frontend/Dockerfile
-  #   ports:
-  #     - "5173:5173"
-  #   depends_on:
-  #     api:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:5173"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  
-  api:
-    build:
-      context: .
-      dockerfile: ./backend/admin-api/Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - ENV=local
-      - Auth0ClientID=
-      - Auth0ClientSecret=
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      scylla-init:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   scylla:
     image: scylladb/scylla:6.1.2
