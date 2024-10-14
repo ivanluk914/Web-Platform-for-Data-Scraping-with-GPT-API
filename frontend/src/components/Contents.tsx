@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import ProfilePage from '../pages/ProfilePage';
 import AdminPage from '../pages/AdminPage';
+import CreateTaskPage from '../pages/CreateTask';
 
 const Content = () => {
   return (
@@ -12,6 +13,7 @@ const Content = () => {
           <Route path="notifications" element={<h1>Notifications</h1>} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="admin" element={<AdminPage />} />
+          <Route path="create-task" element={<CreateTaskPage />} />
         </Routes>
       </div>
     </div>

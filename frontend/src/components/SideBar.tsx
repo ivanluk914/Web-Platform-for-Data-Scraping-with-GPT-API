@@ -12,17 +12,19 @@ const Sidebar: React.FC = () => {
   const mainMenuItems = [
     { name: 'Home', icon: <FiHome />, path: '/home' },
     { name: 'Task Management', icon: <FiPlusCircle />, path: '/home/tasks' },
+    { name: 'Create Task', icon: <FiPlusCircle />, path: '/home/create-task' },
     { name: 'Notifications', icon: <FiBell />, path: '/home/notifications' },
     { name: 'Profile', icon: <FiUser />, path: '/home/profile' },
     { name: 'Admin', icon: <FiSettings />, path: '/home/admin' },
   ];
 
   const handleLogout = () => {
+    localStorage.removeItem('hasVisitedHomePage');
     logout({ logoutParams: { returnTo: window.location.origin } });
   };
 
   return (
-    <aside className="w-64 bg-gray-100 flex flex-col h-screen">
+    <aside className="w-64 bg-gray-100 flex flex-col min-h-screen">
       <div className="flex items-center gap-2 p-4">
         <FiUsers className="text-2xl" />
         <h1 className="w-full text-small font-bold uppercase opacity-100">CLAUDECOLLABORATORS</h1>

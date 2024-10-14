@@ -27,6 +27,23 @@ services:
       timeout: 10s
       retries: 3
 
+  scraper-api:
+    build:
+      context: .
+      dockerfile: ./backend/scraper-api/Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # frontend:
   #   build:
   #     context: .
