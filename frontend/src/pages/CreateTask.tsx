@@ -5,7 +5,9 @@ import { CalendarDate } from "@internationalized/date";
 import { useNavigate } from 'react-router-dom';
 import { Chip } from "@nextui-org/react";
 import { useAuth0 } from '@auth0/auth0-react';
-import { toast, Toaster } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
+import { useHttp } from '../providers/http-provider';
+import { validateURL, validateNonEmptyArray, validatePositiveInteger } from '../utils/validationUtils';
 
 const TaskCreation = () => {
   // State for form fields
@@ -39,27 +41,21 @@ const TaskCreation = () => {
   const [dataTypes, setDataTypes] = useState(['']);
   const [content, setContent] = useState(''); // Add this line to define content state
 
+  const axiosInstance = useHttp(); // get the axios instance from the http-provider
+
   const sendTaskToBackend = async () => {
     try {
-      //backend api: http://localhost:5001/api/user_id/task
-      const response = await fetch(`http://localhost:5001/api/${user?.sub}/task`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sourceURL,
-          keywords,
-          outputFormat,
-          dataTypes
-        }),
+      const response = await axiosInstance.post(`http://localhost:5001/api/${user?.sub}/task`, {
+        sourceURL,
+        keywords,
+        outputFormat,
+        startDate,
+        endDate,
+        frequency,
+        frequencyUnit,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send task to backend');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       console.log('Task sent successfully:', data);
       setContent(data.content); // Change data.content to data.gpt_response after buying GPT API
     } catch (error) {
@@ -71,10 +67,10 @@ const TaskCreation = () => {
     e.preventDefault();
 
     // Validation checks
-    const areKeywordsFilled = keywords.every(keyword => keyword.trim() !== '');
-    const areDataTypesFilled = dataTypes.every(dataType => dataType.trim() !== '');
-    const isFrequencyValid = /^\d+$/.test(frequency) && parseInt(frequency, 10) > 0;
-    const isURLValid = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(sourceURL);
+    const areKeywordsFilled = validateNonEmptyArray(keywords);
+    const areDataTypesFilled = validateNonEmptyArray(dataTypes);
+    const isFrequencyValid = validatePositiveInteger(frequency);
+    const isURLValid = validateURL(sourceURL);
 
     if (!sourceURL || !areKeywordsFilled || !areDataTypesFilled || !outputFormat || !startDate || !endDate || !frequency || !frequencyUnit) {
       toast.error('Please fill in all fields before proceeding.');
@@ -133,8 +129,6 @@ const TaskCreation = () => {
   useEffect(() => {
     console.log('After setting visibility:', isVisible);
   }, [isVisible]);
-
-  const totalPagesScraped ="3 (need backend)"
 
     const modifyTask = () => {
       setIsVisible('block');
@@ -258,7 +252,7 @@ const TaskCreation = () => {
                 onChange={handleDateChange(setStartDate)} 
                 />
                 
-              </div>
+              </div>  
           </div>  
           <div className="w-full flex flex-col gap-4 mb-4">
               <div key={variants} className="flex w-full flex-wrap md:flex-nowrap mb-6 md:mb-0 gap-4 mt-4">
