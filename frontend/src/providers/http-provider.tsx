@@ -45,5 +45,5 @@ export const HttpProvider: React.FC<{ children: React.ReactNode }> = ({ children
         {children}
       </QueryClientProvider>
     </HttpContext.Provider>
-  );
+  );   
 };
