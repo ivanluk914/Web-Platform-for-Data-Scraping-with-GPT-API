@@ -1,0 +1,32 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ .Release.Name }}-otel
+spec:
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+    processors:
+      batch:
+    exporters:
+      logging:
+        loglevel: debug
+      jaeger:
+        endpoint: {{ .Values.jaeger.endpoint }}
+        tls:
+          insecure: true
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [logging, jaeger]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [logging, prometheus]

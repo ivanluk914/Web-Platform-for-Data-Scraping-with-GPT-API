@@ -1,0 +1,23 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: {{ .Release.Name }}-scylla
+spec:
+  version: {{ .Values.scylla.version }}
+  repository: {{ .Values.scylla.repository }}
+  developerMode: {{ .Values.scylla.developerMode }}
+  cpuset: {{ .Values.scylla.cpuset }}
+  datacenter:
+    name: {{ .Values.scylla.datacenter.name }}
+    racks:
+      - name: {{ .Values.scylla.datacenter.rack }}
+        members: {{ .Values.scylla.datacenter.members }}
+        storage:
+          capacity: {{ .Values.scylla.storage }}
+        resources:
+          requests:
+            cpu: {{ .Values.scylla.resources.requests.cpu }}
+            memory: {{ .Values.scylla.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.scylla.resources.limits.cpu }}
+            memory: {{ .Values.scylla.resources.limits.memory }}
