@@ -1,4 +1,4 @@
-import { Auth0Provider } from "@auth0/auth0-react";
+import { AppState, Auth0Provider } from "@auth0/auth0-react";
 import { useNavigate } from "react-router-dom";
 
 export const Auth0ProviderWithNavigate = ({ children }: { children: React.ReactNode }) => {
@@ -8,7 +8,7 @@ export const Auth0ProviderWithNavigate = ({ children }: { children: React.ReactN
   const clientId = "EisLX6gz0Hsa6vVrSIIvmczWKdUEYqzy";
   const redirectUri = "http://localhost:5173/callback";
 
-  const onRedirectCallback = (appState: any) => {
+  const onRedirectCallback = (appState?: AppState) => {
     navigate(appState?.returnTo || window.location.pathname);
   };
 
