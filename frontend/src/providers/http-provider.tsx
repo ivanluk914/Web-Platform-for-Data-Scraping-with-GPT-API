@@ -2,7 +2,7 @@ import {
     QueryClient,
     QueryClientProvider,
   } from '@tanstack/react-query';
-  import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import axios, { AxiosInstance } from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
 
@@ -45,5 +45,5 @@ export const HttpProvider: React.FC<{ children: React.ReactNode }> = ({ children
         {children}
       </QueryClientProvider>
     </HttpContext.Provider>
-  );
+  );   
 };

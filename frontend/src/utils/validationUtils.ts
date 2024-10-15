@@ -61,3 +61,31 @@ export const validateEmail = (email: string): boolean => {
     // This is a simple validation. Adjust as needed for your specific requirements.
     return /^\+?[\d\s-]{10,14}$/.test(phone);
   };
+
+  /**
+   * Validates a URL.
+   * @param url The URL to validate.
+   * @returns True if the URL is valid, false otherwise.
+   */
+  export const validateURL = (url: string): boolean => {
+    const re = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+    return re.test(url);
+  };
+
+  /**
+   * Validates that all items in an array are non-empty strings.
+   * @param items The array of strings to validate.
+   * @returns True if all items are non-empty, false otherwise.
+   */
+  export const validateNonEmptyArray = (items: string[]): boolean => {
+    return items.every(item => item.trim() !== '');
+  };
+
+  /**
+   * Validates that a string is a positive integer.
+   * @param value The string to validate.
+   * @returns True if the string is a positive integer, false otherwise.
+   */
+  export const validatePositiveInteger = (value: string): boolean => {
+    return /^\d+$/.test(value) && parseInt(value, 10) > 0;
+  };
