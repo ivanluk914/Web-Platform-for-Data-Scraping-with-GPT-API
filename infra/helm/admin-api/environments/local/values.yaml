@@ -1,0 +1,59 @@
+global:
+  environment: development
+
+api:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    enabled: true
+
+postgres:
+  storage: 1Gi
+  instances:
+  - name: pg-admin-api
+    replicas: 2
+    dataVolumeClaimSpec:
+      accessModes:
+      - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: 1Gi
+  backups:
+    pgbackrest:
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+
+redis:
+  replicas: 1
+
+scylla:
+  developerMode: true
+  cpuset: false
+  datacenter:
+    name: datacenter1
+    rack: rack1
+    members: 1
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 1
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+ingress:
+  enabled: false

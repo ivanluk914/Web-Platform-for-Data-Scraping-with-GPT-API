@@ -1,0 +1,12 @@
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: {{ .Release.Name }}-postgres
+spec:
+  postgresVersion: {{ .Values.postgres.postgresVersion }}
+  instances:
+    {{- toYaml .Values.postgres.instances | nindent 4 }}
+  users:
+    - name: {{ .Values.postgres.user }}
+  backups:
+    {{- toYaml .Values.postgres.backups | nindent 4 }}

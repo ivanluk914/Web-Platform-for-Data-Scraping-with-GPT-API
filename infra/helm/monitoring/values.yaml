@@ -1,0 +1,14 @@
+global:
+  environment: production
+
+jaeger:
+  enabled: true
+
+prometheus:
+  enabled: true
+
+loki:
+  enabled: true
+
+grafana:
+  enabled: true

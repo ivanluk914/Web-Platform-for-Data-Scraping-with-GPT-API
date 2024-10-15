@@ -10,6 +10,8 @@ help:
 	@echo "  start           - Build and run all services"
 	@echo "  logs            - View logs for only the api service"
 	@echo "  logs-all        - View logs of all services"
+	@echo "  deploy          - Deploy local minikube environment"
+
 up:
 	docker-compose up -d
 
@@ -25,4 +27,7 @@ logs:
 logs-all:
 	docker-compose logs -f
 
-.PHONY: help up down start logs logs-all
+deploy:
+	./infra/scripts/bootstrap_cluster.sh
+
+.PHONY: help up down start logs logs-all deploy
