@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import UserTable from './UserTable';
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useHttp } from '../providers/http-provider';
 
 const UserManagement: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const http = useHttp();
+
   const { isPending, error, data } = useQuery({
     queryKey: ['users', page, pageSize],
-    queryFn: () =>
-      fetch(`http://localhost:8080/api/user?page=${page - 1}&pageSize=${pageSize}`).then((res) =>
-        res.json(),
-      ),
+    queryFn: async () => {
+      const response = await http.get(`/user?page=${page - 1}&pageSize=${pageSize}`);
+      return response.data;
+    },
     placeholderData: keepPreviousData,
   });
 
