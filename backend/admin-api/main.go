@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
 	_ "go.uber.org/automaxprocs"
+	"go.uber.org/zap/zapcore"
 
 	"admin-api/clients"
 	"admin-api/config"
@@ -19,24 +21,33 @@ import (
 	"github.com/gin-contrib/cors"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"github.com/grafana/pyroscope-go"
 	healthcheck "github.com/tavsec/gin-healthcheck"
 	"github.com/tavsec/gin-healthcheck/checks"
 	hc "github.com/tavsec/gin-healthcheck/config"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	otelpyroscope "github.com/grafana/otel-profiling-go"
+	otelzapbridge "go.opentelemetry.io/contrib/bridges/otelzap"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/host"
-	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	otelruntime "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -44,30 +55,23 @@ var (
 )
 
 func main() {
+	var err error
+
 	// Initialize base context
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	// Initialize logger
-	var err error
-	logger, err := zap.NewProduction()
-	if err != nil {
-		logger.Fatal("Failed to initialize logger", zap.Error(err))
-	}
-	defer logger.Sync()
-
-	// Replace the global logger
-	zap.ReplaceGlobals(logger)
-
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatal("Failed to load configuration", zap.Error(err))
+		panic(fmt.Errorf("failed to load configuration, err=%w", err))
 	}
 
 	// Initialize telemetry
-	cleanUp := initTelemetry(ctx, logger, cfg.Otel)
+	logger, cleanUp := initTelemetry(ctx, cfg)
 	defer cleanUp()
+
+	httpClient := initHttpConn()
 
 	// Initialize database connections
 	err = models.InitDB(ctx, logger, cfg.Postgres, cfg.Scylla, cfg.Redis)
@@ -79,10 +83,28 @@ func main() {
 	if cfg.Server.IsProd() {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	r := gin.Default()
+	r := gin.New()
 
 	// Use zap logger for Gin
-	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	r.Use(otelgin.Middleware(serviceName, otelgin.WithGinFilter(func(c *gin.Context) bool {
+		return c.Request.URL.Path != "/healthz"
+	})))
+	r.Use(ginzap.GinzapWithConfig(logger, &ginzap.Config{
+		UTC:        true,
+		TimeFormat: time.RFC3339,
+		SkipPaths:  []string{"/healthz"},
+		Context: ginzap.Fn(func(c *gin.Context) []zapcore.Field {
+			fields := []zapcore.Field{}
+			if requestID := c.Writer.Header().Get("X-Request-Id"); requestID != "" {
+				fields = append(fields, zap.String("request_id", requestID))
+			}
+			if trace.SpanContextFromContext(c.Request.Context()).IsValid() {
+				fields = append(fields, zap.String("trace_id", trace.SpanContextFromContext(c.Request.Context()).TraceID().String()))
+				fields = append(fields, zap.String("span_id", trace.SpanContextFromContext(c.Request.Context()).SpanID().String()))
+			}
+			return fields
+		}),
+	}))
 	r.Use(ginzap.RecoveryWithZap(logger, true))
 
 	r.Use(cors.Default())
@@ -90,7 +112,7 @@ func main() {
 	healthcheck.New(r, hc.DefaultConfig(), []checks.Check{})
 
 	// Configure dependencies
-	auth0Client, err := clients.NewAuthClient(logger, cfg.Auth0)
+	auth0Client, err := clients.NewAuthClient(logger, httpClient, cfg.Auth0)
 	if err != nil {
 		logger.Fatal("Failed to initialize Auth0 client", zap.Error(err))
 	}
@@ -102,7 +124,6 @@ func main() {
 	api := r.Group("/api")
 	if cfg.Server.IsProd() {
 		api.Use(middleware.JWTValidationMiddleware(logger, cfg.Auth0))
-		api.Use(otelgin.Middleware(serviceName))
 	}
 
 	handlers.SetupUserRoutes(api, userService)
@@ -115,52 +136,92 @@ func main() {
 	}
 }
 
-func initTelemetry(ctx context.Context, logger *zap.Logger, cfg config.OtelConfig) func() {
-	// Initialize grpc connection
-	conn, err := initGrpcConn(cfg)
+func initTelemetry(ctx context.Context, cfg *config.Config) (*otelzap.Logger, func()) {
+	grpcClient, err := initGrpcConn(cfg.Otel)
 	if err != nil {
-		logger.Fatal("Failed to initialize connection", zap.Error(err))
+		panic(fmt.Errorf("failed to initialize gRPC client, err=%w", err))
 	}
 
-	res := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.ServiceNameKey.String(serviceName),
+	metaRes, err := resource.New(
+		ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.CloudRegionKey.String(cfg.Server.Region),
+		),
+		resource.WithOS(),
+		resource.WithProcess(),
+		resource.WithContainer(),
+		resource.WithHost(),
 	)
+	if err != nil {
+		panic(fmt.Errorf("failed to initialize meta resource, err=%w", err))
+	}
+
+	res, err := resource.Merge(
+		resource.Default(),
+		metaRes,
+	)
+	if err != nil {
+		panic(fmt.Errorf("failed to merge resource, err=%w", err))
+	}
 
 	// Initialize tracer
-	tracer, err := initTracerProvider(ctx, res, conn)
+	tracer, err := initTracerProvider(ctx, res, grpcClient)
 	if err != nil {
-		logger.Fatal("Failed to initialize tracer", zap.Error(err))
+		panic(fmt.Errorf("failed to initialize tracer, err=%w", err))
 	}
 
 	// Initialize metrics
-	metrics, err := initMeterProvider(ctx, res, conn)
+	metrics, err := initMeterProvider(ctx, res, grpcClient)
 	if err != nil {
-		logger.Fatal("Failed to initialize meter", zap.Error(err))
+		panic(fmt.Errorf("failed to initialize meter, err=%w", err))
 	}
 
 	// Start host metrics
 	err = host.Start(host.WithMeterProvider(metrics))
 	if err != nil {
-		logger.Fatal("Failed to start host metrics", zap.Error(err))
+		panic(fmt.Errorf("failed to start host metrics, err=%w", err))
 	}
 
 	// Start runtime metrics
-	err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
+	err = otelruntime.Start(otelruntime.WithMinimumReadMemStatsInterval(time.Second))
 	if err != nil {
-		logger.Fatal("Failed to start runtime metrics", zap.Error(err))
+		panic(fmt.Errorf("failed to start runtime metrics, err=%w", err))
 	}
 
+	profiler, err := initPyroscopeProfiling(cfg.Otel)
+	if err != nil {
+		panic(fmt.Errorf("failed to initialize Pyroscope profiler, err=%w", err))
+	}
+
+	logProvider, err := initLogProvider(ctx, res, cfg.Otel)
+	if err != nil {
+		panic(fmt.Errorf("failed to initialize log provider, err=%w", err))
+	}
+
+	z := zap.New(otelzapbridge.NewCore(serviceName, otelzapbridge.WithLoggerProvider(logProvider)))
+	logger := otelzap.New(z, otelzap.WithMinLevel(zapcore.InfoLevel), otelzap.WithStackTrace(true))
+	undoReplaceGlobalLogger := otelzap.ReplaceGlobals(logger)
+
 	cleanUp := func() {
+		logger.Sync()
+		undoReplaceGlobalLogger()
+
 		if err := tracer.Shutdown(ctx); err != nil {
 			logger.Error("Error shutting down tracer provider", zap.Error(err))
 		}
 		if err := metrics.Shutdown(ctx); err != nil {
 			logger.Error("Error shutting down meter provider", zap.Error(err))
 		}
+		if err := profiler.Stop(); err != nil {
+			logger.Error("Error stopping Pyroscope profiler", zap.Error(err))
+		}
+		if err := logProvider.Shutdown(ctx); err != nil {
+			logger.Error("Error shutting down log provider", zap.Error(err))
+		}
 	}
 
-	return cleanUp
+	return logger, cleanUp
 }
 
 func initGrpcConn(cfg config.OtelConfig) (*grpc.ClientConn, error) {
@@ -170,6 +231,12 @@ func initGrpcConn(cfg config.OtelConfig) (*grpc.ClientConn, error) {
 	}
 
 	return conn, err
+}
+
+func initHttpConn() *http.Client {
+	client := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+
+	return client
 }
 
 func initTracerProvider(ctx context.Context, res *resource.Resource, conn *grpc.ClientConn) (*sdktrace.TracerProvider, error) {
@@ -184,7 +251,7 @@ func initTracerProvider(ctx context.Context, res *resource.Resource, conn *grpc.
 		sdktrace.WithResource(res),
 		sdktrace.WithSpanProcessor(bsp),
 	)
-	otel.SetTracerProvider(tracerProvider)
+	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tracerProvider))
 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	return tracerProvider, err
@@ -202,4 +269,40 @@ func initMeterProvider(ctx context.Context, res *resource.Resource, conn *grpc.C
 	)
 	otel.SetMeterProvider(meterProvider)
 	return meterProvider, nil
+}
+
+func initLogProvider(ctx context.Context, res *resource.Resource, cfg config.OtelConfig) (*sdklog.LoggerProvider, error) {
+	exporter, err := otlploghttp.New(ctx, otlploghttp.WithEndpoint(cfg.EndpointHttp), otlploghttp.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logging exporter: %w", err)
+	}
+
+	processor := sdklog.NewBatchProcessor(exporter)
+	provider := sdklog.NewLoggerProvider(
+		sdklog.WithResource(res),
+		sdklog.WithProcessor(processor),
+	)
+	global.SetLoggerProvider(provider)
+	return provider, nil
+}
+
+func initPyroscopeProfiling(cfg config.OtelConfig) (*pyroscope.Profiler, error) {
+	profiler, err := pyroscope.Start(pyroscope.Config{
+		ApplicationName: serviceName,
+		ServerAddress:   cfg.PyroscopeURL,
+		ProfileTypes: []pyroscope.ProfileType{
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+			pyroscope.ProfileGoroutines,
+			pyroscope.ProfileMutexCount,
+			pyroscope.ProfileMutexDuration,
+			pyroscope.ProfileBlockCount,
+			pyroscope.ProfileBlockDuration,
+		},
+	})
+
+	return profiler, err
 }

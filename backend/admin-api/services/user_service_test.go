@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
 )
 
@@ -58,7 +59,7 @@ func (m *MockAuthClient) RemoveUserRole(ctx context.Context, userID string, role
 func setupTestUserService() (*UserService, *MockAuthClient) {
 	logger, _ := zap.NewDevelopment()
 	mockAuthClient := new(MockAuthClient)
-	service := NewUserService(logger, mockAuthClient)
+	service := NewUserService(otelzap.New(logger), mockAuthClient)
 	return service, mockAuthClient
 }
 

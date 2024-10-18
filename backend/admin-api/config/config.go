@@ -21,6 +21,7 @@ type Config struct {
 type ServerConfig struct {
 	Address string
 	Env     string
+	Region  string
 }
 
 type PostgresConfig struct {
@@ -44,7 +45,9 @@ type Auth0Config struct {
 }
 
 type OtelConfig struct {
-	Endpoint string
+	Endpoint     string
+	EndpointHttp string
+	PyroscopeURL string
 }
 
 func Load() (*Config, error) {
@@ -64,6 +67,9 @@ func Load() (*Config, error) {
 
 	if env := viper.GetString("ENV"); env != "" {
 		cfg.Server.Env = env
+	}
+	if region := viper.GetString("REGION"); region != "" {
+		cfg.Server.Region = region
 	}
 	if clientID, ok := viper.Get("AUTH0_CLIENT_ID").(string); ok {
 		cfg.Auth0.ClientID = clientID

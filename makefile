@@ -8,8 +8,7 @@ help:
 	@echo "  up              - Start all services"
 	@echo "  down            - Stop all services"
 	@echo "  start           - Build and run all services"
-	@echo "  logs            - View logs for only the api service"
-	@echo "  logs-all        - View logs of all services"
+	@echo "  logs            - View docker logs of all services"
 	@echo "  deploy          - Deploy local minikube environment"
 
 up:
@@ -22,12 +21,9 @@ start:
 	docker-compose up --build -d
 
 logs:
-	docker-compose logs -f api
-
-logs-all:
 	docker-compose logs -f
 
 deploy:
 	./infra/scripts/bootstrap_cluster.sh
 
-.PHONY: help up down start logs logs-all deploy
+.PHONY: help up down start logs deploy

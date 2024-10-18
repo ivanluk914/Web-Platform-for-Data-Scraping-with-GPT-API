@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gocql/gocql/otelgocql"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
@@ -20,26 +21,26 @@ var (
 	db            *gorm.DB
 	scyllaSession *gocql.Session
 	redisClient   *redis.Client
-	logger        *zap.Logger
+	logger        *otelzap.Logger
 )
 
-func InitDB(ctx context.Context, logger *zap.Logger, postgresConfig config.PostgresConfig,
+func InitDB(ctx context.Context, logger *otelzap.Logger, postgresConfig config.PostgresConfig,
 	scyllaConfig config.ScyllaConfig, redisConfig config.RedisConfig) error {
 	// Initialize PostgreSQL
 	var err error
 	db, err = gorm.Open(postgres.Open(postgresConfig.URL), &gorm.Config{})
 	if err != nil {
-		logger.Error("Failed to connect to PostgreSQL", zap.Error(err))
+		logger.Ctx(ctx).Error("Failed to connect to PostgreSQL", zap.Error(err))
 		return err
 	}
 
 	if err := db.Use(tracing.NewPlugin()); err != nil {
-		logger.Error("Failed to initialize opentelemetry tracing plugin", zap.Error(err))
+		logger.Ctx(ctx).Error("Failed to initialize opentelemetry tracing plugin", zap.Error(err))
 	}
 
 	// Auto Migrate the schema
 	if err := migrateSchemas(); err != nil {
-		logger.Error("Failed to auto migrate schema", zap.Error(err))
+		logger.Ctx(ctx).Error("Failed to auto migrate schema", zap.Error(err))
 		return err
 	}
 
@@ -52,7 +53,7 @@ func InitDB(ctx context.Context, logger *zap.Logger, postgresConfig config.Postg
 	)
 
 	if err != nil {
-		logger.Error("Failed to connect to ScyllaDB", zap.Error(err))
+		logger.Ctx(ctx).Error("Failed to connect to ScyllaDB", zap.Error(err))
 		return err
 	}
 
@@ -62,15 +63,15 @@ func InitDB(ctx context.Context, logger *zap.Logger, postgresConfig config.Postg
 	})
 
 	if err := redisotel.InstrumentTracing(redisClient); err != nil {
-		logger.Error("Failed to initialize redis tracing", zap.Error(err))
+		logger.Ctx(ctx).Error("Failed to initialize redis tracing", zap.Error(err))
 		return err
 	}
 	if err := redisotel.InstrumentMetrics(redisClient); err != nil {
-		logger.Error("Failed to initialize redis metrics", zap.Error(err))
+		logger.Ctx(ctx).Error("Failed to initialize redis metrics", zap.Error(err))
 		return err
 	}
 
-	logger.Info("Database connections initialized successfully")
+	logger.Ctx(ctx).Info("Database connections initialized successfully")
 	return nil
 }
 

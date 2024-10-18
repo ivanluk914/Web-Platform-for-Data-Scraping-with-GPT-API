@@ -93,7 +93,7 @@ Access the following UIs for monitoring and debugging:
 
 ## Logging
 
-The application uses structured JSON logging with Zap. Logs are collected by Promtail and can be queried in Grafana using LogQL.
+The application uses structured JSON logging with Zap. Logs are collected by the Otel-Collector and can be queried in Grafana using LogQL.
 
 Example LogQL query:
 ```
