@@ -3,7 +3,7 @@ server:
   env: "prod"
 
 postgres:
-  url: "postgresql://user:password@postgres:5432/myapp"
+  url: "postgresql://user:password@postgres:5432/admin"
 
 scylla:
   hosts:
@@ -19,3 +19,5 @@ auth0:
 
 otel:
   endpoint: "otel-collector:4317"
+  endpointhttp: "otel-collector:4318"
+  pyroscopeurl: "http://pyroscope:4040"

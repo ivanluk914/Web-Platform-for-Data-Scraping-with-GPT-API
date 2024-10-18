@@ -12,6 +12,7 @@ import (
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/gin-gonic/gin"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +30,7 @@ func (c *JWTClaims) Validate(ctx context.Context) error {
 	return nil
 }
 
-func JWTValidationMiddleware(logger *zap.Logger, cfg config.Auth0Config) gin.HandlerFunc {
+func JWTValidationMiddleware(logger *otelzap.Logger, cfg config.Auth0Config) gin.HandlerFunc {
 	customClaims := func() validator.CustomClaims {
 		return &JWTClaims{}
 	}
@@ -57,7 +58,7 @@ func JWTValidationMiddleware(logger *zap.Logger, cfg config.Auth0Config) gin.Han
 	}
 
 	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
-		logger.Error("Encountered error while validating JWT", zap.Error(err))
+		logger.Ctx(r.Context()).Error("Encountered error while validating JWT", zap.Error(err))
 	}
 
 	middleware := jwtmiddleware.New(

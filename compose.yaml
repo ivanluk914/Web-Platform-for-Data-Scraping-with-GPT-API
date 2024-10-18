@@ -1,8 +1,9 @@
 services:
-  api:
+  admin-api:
     build:
       context: .
       dockerfile: ./backend/admin-api/Dockerfile
+    container_name: admin-api
     ports:
       - "8080:8080"
     environment:
@@ -14,6 +15,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+        tag: "{{.Name}}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -31,10 +33,17 @@ services:
     build:
       context: .
       dockerfile: ./backend/scraper-api/Dockerfile
+    container_name: scraper-api
     ports:
       - "5001:5001"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "{{.Name}}"
     depends_on:
       - postgres
       - redis
@@ -61,8 +70,9 @@ services:
 
   postgres:
     image: postgres:16.4-alpine
+    container_name: postgres
     environment:
-      POSTGRES_DB: myapp
+      POSTGRES_DB: admin
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     volumes:
@@ -70,13 +80,14 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d myapp"]
+      test: ["CMD-SHELL", "pg_isready -U user -d admin"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7.4-alpine
+    container_name: redis
     ports:
       - "6379:6379"
     healthcheck:
@@ -116,6 +127,7 @@ services:
       - ./infra/docker/otel/otel-collector.yaml:/etc/otel-collector.yaml
     ports:
       - 4317:4317
+      - 4318:4318
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -131,16 +143,26 @@ services:
   
   loki:
     image: grafana/loki:3.2.0
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./infra/docker/loki/loki-config.yaml:/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
 
-  promtail:
-    image: grafana/promtail:3.2.0
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./infra/docker/promtail:/etc/promtail
-    command: -config.file=/etc/promtail/config.yml
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    ports:
+      - 9187:9187
+    environment:
+      DATA_SOURCE_NAME: "postgresql://user:password@postgres:5432/admin?sslmode=disable"
+    links:
+      - postgres
+      - prometheus
+  
+  pyroscope:
+    image: grafana/pyroscope:1.9.0
+    ports:
+    - 4040:4040
 
   grafana:
     image: grafana/grafana:11.2.2
@@ -148,25 +170,9 @@ services:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /etc/grafana/provisioning/datasources
-        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
-        apiVersion: 1
-        datasources:
-        - name: Loki
-          type: loki
-          access: proxy 
-          orgId: 1
-          url: http://loki:3100
-          basicAuth: false
-          isDefault: true
-          version: 1
-          editable: false
-        EOF
-        /run.sh
+      - GF_INSTALL_PLUGINS=redis-datasource,grafana-lokiexplore-app,grafana-exploretraces-app,grafana-pyroscope-app
+    volumes:
+      - ./infra/docker/grafana/provisioning/:/etc/grafana/provisioning/
     ports:
       - "3000:3000"
 

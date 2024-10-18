@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/bytedance/sonic"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -158,7 +157,6 @@ func GetTasksByUserId(uid string) ([]Task, error) {
 	var tasks []Task
 	result := db.Where("owner = ?", uid).Find(&tasks)
 	if result.Error != nil {
-		zap.L().Error("Failed to get tasks for user", zap.String("user id", uid), zap.Error(result.Error))
 		return nil, result.Error
 	}
 	return tasks, nil
@@ -168,7 +166,6 @@ func GetTaskById(jid uint64) (*Task, error) {
 	var task *Task
 	result := db.Where("id = ?", jid).First(&task)
 	if result.Error != nil {
-		zap.L().Error("Failed to get task", zap.Uint64("task id", jid), zap.Error(result.Error))
 		return nil, result.Error
 	}
 	return task, nil
@@ -177,7 +174,6 @@ func GetTaskById(jid uint64) (*Task, error) {
 func CreateTask(task Task) error {
 	result := db.Create(&task)
 	if result.Error != nil {
-		zap.L().Error("Failed to create task", zap.Any("task", task), zap.Error(result.Error))
 		return result.Error
 	}
 	return nil
@@ -186,7 +182,6 @@ func CreateTask(task Task) error {
 func UpdateTask(task Task) error {
 	result := db.Model(&task).Updates(task)
 	if result.Error != nil {
-		zap.L().Error("Failed to update task", zap.Any("task", task), zap.Error(result.Error))
 		return result.Error
 	}
 	return nil

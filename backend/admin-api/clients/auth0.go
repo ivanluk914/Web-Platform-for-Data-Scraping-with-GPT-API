@@ -4,12 +4,13 @@ import (
 	"admin-api/config"
 	"admin-api/models"
 	"context"
+	"net/http"
 
 	"github.com/auth0/go-auth0"
 	"github.com/auth0/go-auth0/authentication"
 	"github.com/auth0/go-auth0/management"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 )
 
 const (
@@ -19,7 +20,7 @@ const (
 )
 
 type authClient struct {
-	logger         *zap.Logger
+	logger         *otelzap.Logger
 	authentication *authentication.Authentication
 	management     *management.Management
 }
@@ -35,13 +36,14 @@ type AuthClient interface {
 	RemoveUserRole(ctx context.Context, userID string, role models.UserRole) error
 }
 
-func NewAuthClient(logger *zap.Logger, cfg config.Auth0Config) (AuthClient, error) {
+func NewAuthClient(logger *otelzap.Logger, httpClient *http.Client, cfg config.Auth0Config) (AuthClient, error) {
 	ctx := context.Background()
 	authAPI, err := authentication.New(
 		ctx,
 		cfg.Domain,
 		authentication.WithClientID(cfg.ClientID),
 		authentication.WithClientSecret(cfg.ClientSecret),
+		authentication.WithClient(httpClient),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create authentication client")
@@ -49,6 +51,7 @@ func NewAuthClient(logger *zap.Logger, cfg config.Auth0Config) (AuthClient, erro
 	managementAPI, err := management.New(
 		cfg.Domain,
 		management.WithClientCredentials(ctx, cfg.ClientID, cfg.ClientSecret),
+		management.WithClient(httpClient),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create management client")

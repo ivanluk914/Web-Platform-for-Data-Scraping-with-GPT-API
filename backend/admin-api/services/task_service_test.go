@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -46,7 +47,7 @@ func setupMiniRedis(t *testing.T) *miniredis.Miniredis {
 
 func setupTestService(t *testing.T) (*TaskService, *gorm.DB, *miniredis.Miniredis) {
 	logger, _ := zap.NewDevelopment()
-	service := NewTaskService(logger)
+	service := NewTaskService(otelzap.New(logger))
 	db := setupTestDB(t)
 	mr := setupMiniRedis(t)
 	return service, db, mr

@@ -39,7 +39,7 @@ func SetupUserRoutes(r *gin.RouterGroup, service UserService) {
 }
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	page, err := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
+	page, err := strconv.ParseInt(c.DefaultQuery("page", "0"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -50,7 +50,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	users, total, err := h.service.ListUsers(c, page, pageSize)
+	users, total, err := h.service.ListUsers(c.Request.Context(), page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -67,7 +67,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 }
 
 func (h *UserHandler) GetUser(c *gin.Context) {
-	user, err := h.service.GetUser(c, c.Param("userId"))
+	user, err := h.service.GetUser(c.Request.Context(), c.Param("userId"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -83,7 +83,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	err := h.service.UpdateUser(c, createUserModel)
+	err := h.service.UpdateUser(c.Request.Context(), createUserModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -91,7 +91,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	err := h.service.DeleteUser(c, c.Param("userId"))
+	err := h.service.DeleteUser(c.Request.Context(), c.Param("userId"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -99,7 +99,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 }
 
 func (h *UserHandler) ListUserRoles(c *gin.Context) {
-	roles, err := h.service.ListUserRoles(c, c.Param("userId"))
+	roles, err := h.service.ListUserRoles(c.Request.Context(), c.Param("userId"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -115,7 +115,7 @@ func (h *UserHandler) AssignUserRole(c *gin.Context) {
 		return
 	}
 
-	err := h.service.AssignUserRole(c, c.Param("userId"), req.Role)
+	err := h.service.AssignUserRole(c.Request.Context(), c.Param("userId"), req.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -129,7 +129,7 @@ func (h *UserHandler) RemoveUserRole(c *gin.Context) {
 		return
 	}
 
-	err := h.service.RemoveUserRole(c, c.Param("userId"), req.Role)
+	err := h.service.RemoveUserRole(c.Request.Context(), c.Param("userId"), req.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
