@@ -17,7 +17,7 @@ const Sidebar: React.FC = () => {
     { name: 'Profile', icon: <FiUser />, path: '/home/profile' },
     { name: 'Admin', icon: <FiSettings />, path: '/home/admin' },
   ];
-
+  
   const handleLogout = () => {
     localStorage.removeItem('hasVisitedHomePage');
     logout({ logoutParams: { returnTo: window.location.origin } });

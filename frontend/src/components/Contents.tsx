@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import ProfilePage from '../pages/ProfilePage';
 import AdminPage from '../pages/AdminPage';
 import CreateTaskPage from '../pages/CreateTask';
-import TaskManagement from '../pages/TaskManagement.tsx';
+import TaskManagement from '../pages/TaskManagement';
 
 const Content = () => {
   return (
