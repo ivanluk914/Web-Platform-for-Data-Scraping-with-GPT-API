@@ -48,6 +48,7 @@ const TaskCreation = () => {
       const response = await axiosInstance.post(`http://localhost:5001/api/${user?.sub}/task`, {
         sourceURL,
         keywords,
+        dataTypes,
         outputFormat,
         startDate,
         endDate,
@@ -134,16 +135,57 @@ const TaskCreation = () => {
       setIsVisible('block');
     }
     const navigate = useNavigate();
-    const continueTask = () => {
-      localStorage.getItem('hasCreatedTask');
-      toast.success(`Task created successfully!`);
-      localStorage.removeItem('hasCreatedTask');
-      //TODO: add task to BE
-      //logic:
-      //1. get task with user_id to BE
-      //2. navigate to /home/task-management/ongoing
-      navigate('/home'); // path can be changed to /home/task-management/ongoing once implemented
-    }
+    const continueTask = async () => {
+      try {
+        const outputTypeMap = {
+          JSON: 1, // OutputTypeJson
+          CSV: 2,  // OutputTypeCsv
+          GPT: 3,  // OutputTypeGpt
+          Markdown: 4 // OutputTypeMarkdown
+        };
+
+        const periodMap = {
+          Mins: 1,   // TaskPeriodHourly
+          Hours: 2,  // TaskPeriodDaily
+          Days: 3    // TaskPeriodWeekly
+        };
+
+        const taskDefinition = {
+          source: [{ type: 1, url: sourceURL }], // Use the integer value for SourceTypeUrl
+          target: keywords.map((keyword, index) => ({
+            type: 1, // Use the integer value for TargetTypeAuto
+            name: keyword,
+            value: dataTypes[index]
+          })),
+          output: [{ type: outputTypeMap[outputFormat] }], // Map outputFormat to the correct integer
+          period: periodMap[frequencyUnit]  // Ensure this is mapped to the correct integer
+        };
+
+        const response = await axiosInstance.post(`http://localhost:8080/api/user/${user?.sub}/task`, taskDefinition);
+
+        if (response.status === 201) {
+          toast.success(`Task created successfully!`);
+          localStorage.removeItem('hasCreatedTask');
+          navigate('/home'); // path can be changed to /home/task-management/ongoing once implemented
+        }
+      } catch (error) {
+        console.error('Error creating task:', error);
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error(error.response.data);
+          console.error(error.response.status);
+          console.error(error.response.headers);
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error(error.request);
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('Error', error.message);
+        }
+        toast.error('Failed to create task. Please try again.');
+      }
+    };
 
   const handleDateChange = (setter: React.Dispatch<React.SetStateAction<CalendarDate | null>>) => (date: CalendarDate | null) => {
     if (date) {
