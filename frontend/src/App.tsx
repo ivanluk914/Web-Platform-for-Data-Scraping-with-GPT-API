@@ -11,7 +11,7 @@ function App() {
       <Auth0ProviderWithNavigate>
         <HttpProvider>
           <Routes>
-          <Route path="/" element={<LoginPage />} />
+            <Route path="/" element={<LoginPage />} />
             <Route path="/callback" element={<CallbackPage />} />
             <Route path="/home/*" element={<HomePage />} />
           </Routes>
