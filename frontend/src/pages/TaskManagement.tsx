@@ -3,98 +3,111 @@ import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, 
 import { useNavigate } from 'react-router-dom';
 import { EyeIcon } from "../components/EyeIcon";
 import { DeleteIcon } from "../components/DeleteIcon";
-// import axios from 'axios';
+import axios from 'axios';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface Task {
   id: string;
-  name: string;
-  dateCreated: string;
-  dateCompleted?: string;
-  dateCancelled?: string;
   url: string;
+  dateCreated: string;
+  timeCreated: string;
   status: 'ongoing' | 'completed' | 'cancelled';
 }
 
 const columns = [
-  { name: "TASK NAME", uid: "name" },
-  { name: "DATE CREATED", uid: "dateCreated" },
-  { name: "STATUS", uid: "status" },
   { name: "URL", uid: "url" },
+  { name: "DATE CREATED", uid: "dateCreated" },
+  { name: "TIME CREATED", uid: "timeCreated" },
+  { name: "STATUS", uid: "status" },
   { name: "ACTIONS", uid: "actions" },
 ];
 
 const TaskManagement: React.FC = () => {
+  const { user } = useAuth0();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
-  // const [isLoading, setIsLoading] = useState(true);
-  // const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch tasks from backend
-  // useEffect(() => {
-  //   const fetchTasks = async () => {
-  //     try {
-  //       setIsLoading(true);
-  //       const response = await axios.get('/api/tasks');
-  //       setTasks(response.data);
-  //       setError(null);
-  //     } catch (err) {
-  //       setError('Failed to fetch tasks. Please try again later.');
-  //       console.error('Error fetching tasks:', err);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-
-  //   fetchTasks();
-  // }, []);
-
-  // Mock data (remove this when connecting to backend)
   useEffect(() => {
-    setTasks([
-      { id: 'task1', name: 'Web Scraping UNSW', dateCreated: '2023-01-01', url: 'https://www.unsw.edu.au', status: 'ongoing' },
-      { id: 'task2', name: 'Data Collection EDX', dateCreated: '2023-02-15', dateCompleted: '2023-07-01', url: 'https://www.edx.org', status: 'completed' },
-      { id: 'task3', name: 'Course Info Extraction', dateCreated: '2023-03-01', dateCancelled: '2023-06-15', url: 'https://www.coursera.org', status: 'cancelled' },
-    ]);
-  }, []);
+    const fetchTasks = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`http://localhost:8080/api/user/${user?.sub}/task`);
+        console.log('Fetched tasks:', response.data);
+        const mappedTasks = response.data.map((task: any) => ({
+          id: task.ID,
+          url: task.task_definition.source[0].url,
+          dateCreated: new Date(task.CreatedAt).toLocaleDateString(),
+          timeCreated: new Date(task.CreatedAt).toLocaleTimeString(),
+          status: mapStatus(task.status),
+        }));
+        setTasks(mappedTasks);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch tasks. Please try again later.');
+        console.error('Error fetching tasks:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTasks();
+  }, [user]);
 
-  const statusColorMap: Record<Task['status'], "primary" | "success" | "danger"> = {
-    ongoing: "primary",
+  const mapStatus = (status: number): 'ongoing' | 'running' | 'completed' | 'failed' | 'canceled' => {
+    switch (status) {
+      case 1:
+        return 'ongoing';
+      case 2:
+        return 'running';
+      case 3:
+        return 'completed';
+      case 4:
+        return 'failed';
+      case 5:
+        return 'canceled';
+      default:
+        return 'ongoing';
+    }
+  };
+
+  const statusColorMap: Record<Task['status'], "primary" | "success" | "danger" | "warning" | "default"> = {
+    ongoing: "default",
+    running: "primary",
     completed: "success",
-    cancelled: "danger"
+    canceled: "danger",
+    failed: "warning"
   };
 
   const handleViewDetails = (taskId: string) => {
-    navigate(`/task/${taskId}`);
+    navigate(`/home/tasks/${taskId}`);
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    // try {
-    //   await axios.delete(`/api/tasks/${taskId}`);
-    //   setTasks(tasks.filter(task => task.id !== taskId));
-    // } catch (err) {
-    //   console.error('Error deleting task:', err);
-    //   // Handle error (e.g., show error message to user)
-    // }
-
-    // Mock delete (remove this when connecting to backend)
-    setTasks(tasks.filter(task => task.id !== taskId));
+    try {
+      await axios.delete(`/api/user/${user?.sub}/task/${taskId}`);
+      setTasks(tasks.filter(task => task.id !== taskId));
+    } catch (err) {
+      console.error('Error deleting task:', err);
+    }
   };
 
   const renderCell = useCallback((task: Task, columnKey: React.Key) => {
     const cellValue = task[columnKey as keyof Task];
 
     switch (columnKey) {
-      case "status":
-        return (
-          <Chip className="capitalize" color={statusColorMap[task.status]} size="sm" variant="flat">
-            {cellValue}
-          </Chip>
-        );
       case "url":
         return (
           <Link href={task.url} isExternal>
             {task.url}
           </Link>
+        );
+      case "status":
+        return (
+          <Chip className="capitalize" color={statusColorMap[task.status]} size="sm" variant="flat">
+            {cellValue}
+          </Chip>
         );
       case "actions":
         return (
@@ -114,10 +127,10 @@ const TaskManagement: React.FC = () => {
       default:
         return cellValue;
     }
-  }, []);
+  }, [tasks]);
 
-  // if (isLoading) return <div>Loading...</div>;
-  // if (error) return <div>{error}</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
 
   return (
     <div>
@@ -133,7 +146,7 @@ const TaskManagement: React.FC = () => {
         <TableBody items={tasks}>
           {(item) => (
             <TableRow key={item.id}>
-              {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
+              {(columnKey) => <TableCell key={`${item.id}-${columnKey}`}>{renderCell(item, columnKey)}</TableCell>}
             </TableRow>
           )}
         </TableBody>

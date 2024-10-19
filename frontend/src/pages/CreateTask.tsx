@@ -23,7 +23,7 @@ const TaskCreation = () => {
   const form1 = [
     { label: "CSV", value: "CSV" },
     { label: "JSON", value: "JSON" },
-    { label: "XML", value: "XML" }
+    { label: "Markdown", value: "Markdown" }
   ];
   
   const today = new Date();
@@ -106,10 +106,9 @@ const TaskCreation = () => {
   };
 
   const addField = () => {
-    //add function forset datatypes and key words
-
-    setKeywords([...keywords, '']); 
-    setDataTypes([...dataTypes, '']); 
+    // Ensure existing keywords and dataTypes are preserved
+    setKeywords((prevKeywords) => [...prevKeywords, '']);
+    setDataTypes((prevDataTypes) => [...prevDataTypes, '']);
   };
   
   const removeField = (index: number) => {
@@ -158,7 +157,14 @@ const TaskCreation = () => {
             value: dataTypes[index]
           })),
           output: [{ type: outputTypeMap[outputFormat] }], // Map outputFormat to the correct integer
-          period: periodMap[frequencyUnit]  // Ensure this is mapped to the correct integer
+          period: periodMap[frequencyUnit],  // Ensure this is mapped to the correct integer
+
+          // dateRange is not implemented in BE yet
+          // dateRange: {
+          //   start: startDate,
+          //   end: endDate
+          // }
+
         };
 
         const response = await axiosInstance.post(`http://localhost:8080/api/user/${user?.sub}/task`, taskDefinition);
@@ -230,7 +236,8 @@ const TaskCreation = () => {
                       placeholder="e.g product_price"
                       value={keyword} 
                       onChange={(e) => handleKeywordChange(index, e.target.value)}  
-                      style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }} 
+                      style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
+                      aria-label="Keyword"
                     />
                   </div>
                   {/* datatype Field */}
@@ -245,6 +252,7 @@ const TaskCreation = () => {
                         { label: "Table", value: "Table" }
                       ]}
                       onSelectionChange={(value) => handleDataTypeChange(index, value)}
+                      aria-label="Data Type"
                     >
                       {(item) => <AutocompleteItem key={item.label}>{item.label}</AutocompleteItem>}
                     </Autocomplete>

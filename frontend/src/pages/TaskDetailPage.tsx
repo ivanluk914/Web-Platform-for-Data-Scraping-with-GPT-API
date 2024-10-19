@@ -1,100 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardBody, Button, Progress, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip } from "@nextui-org/react";
-// import axios from 'axios';
+import axios from 'axios';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface Task {
   id: string;
-  name: string;
-  status: 'ongoing' | 'completed' | 'cancelled';
-  createdOn: string;
+  status: number;
+  createdAt: string;
+  updatedAt: string;
+  owner: string;
   completedOn: string | null;
   cancelledOn: string | null;
   url: string;
   outputFormat: string;
-  keywords: string;
-  dataType: string;
+  keywords: string[];
+  dataType: string[];
+  outputType: string;
+  startDate: string;
+  endDate: string;
   frequency: string;
-  scrapProcess: number;
+  frequencyUnit: string;
 }
 
 const TaskDetailPage: React.FC = () => {
+  const { user } = useAuth0();
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [task, setTask] = useState<Task | null>(null);
-  // const [isLoading, setIsLoading] = useState(true);
-  // const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch task details from backend
-    // const fetchTaskDetails = async () => {
-    //   try {
-    //     setIsLoading(true);
-    //     const response = await axios.get(`/api/tasks/${taskId}`);
-    //     setTask(response.data);
-    //     setError(null);
-    //   } catch (err) {
-    //     setError('Failed to fetch task details. Please try again later.');
-    //     console.error('Error fetching task details:', err);
-    //   } finally {
-    //     setIsLoading(false);
-    //   }
-    // };
-
-    // fetchTaskDetails();
-
-    // Mock data (remove this when connecting to backend)
-    const mockTasks: Record<string, Task> = {
-      'task1': {
-        id: 'task1',
-        name: 'Web Scraping UNSW',
-        status: 'ongoing',
-        createdOn: '2023-01-01',
-        completedOn: null,
-        cancelledOn: null,
-        url: 'https://www.unsw.edu.au',
-        outputFormat: 'JSON',
-        keywords: 'course_name, course_code',
-        dataType: 'Text',
-        frequency: '48 Hours',
-        scrapProcess: 40,
-      },
-      'task2': {
-        id: 'task2',
-        name: 'Data Collection EDX',
-        status: 'completed',
-        createdOn: '2023-02-15',
-        completedOn: '2023-07-01',
-        cancelledOn: null,
-        url: 'https://www.edx.org',
-        outputFormat: 'CSV',
-        keywords: 'course_title, instructor',
-        dataType: 'Text',
-        frequency: '24 Hours',
-        scrapProcess: 100,
-      },
-      'task3': {
-        id: 'task3',
-        name: 'Course Info Extraction',
-        status: 'cancelled',
-        createdOn: '2023-03-01',
-        completedOn: null,
-        cancelledOn: '2023-06-15',
-        url: 'https://www.coursera.org',
-        outputFormat: 'XML',
-        keywords: 'course_description, duration',
-        dataType: 'Text',
-        frequency: '72 Hours',
-        scrapProcess: 25,
-      },
+    const fetchTaskDetails = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`http://localhost:8080/api/user/${user?.sub}/task/${taskId}`);
+        console.log('Fetched task:', response.data);
+        // TODO: map response.data to Task type
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch task details. Please try again later.');
+        console.error('Error fetching task details:', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    setTask(mockTasks[taskId || ''] || null);
+    fetchTaskDetails();
   }, [taskId]);
 
-  // if (isLoading) return <div>Loading...</div>;
-  // if (error) return <div>{error}</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
   if (!task) return <div>Task not found</div>;
 
   const handleBack = () => {
