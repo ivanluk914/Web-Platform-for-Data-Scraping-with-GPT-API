@@ -11,3 +11,11 @@ datasources:
     isDefault: true
     version: 1
     editable: false
+    
+    jsonData:
+      derivedFields:
+        - datasourceUid: loki
+          matcherRegex: "\"traceid\":\\s?\"([0-9a-fA-F]+)\""
+          name: TraceID
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View Trace'
