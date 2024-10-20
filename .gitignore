@@ -122,5 +122,3 @@ node_modules
 
 # Environment variables
 .env
-pnpm-lock.yaml
-package.json
