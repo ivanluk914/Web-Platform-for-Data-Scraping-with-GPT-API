@@ -16,6 +16,7 @@ type Config struct {
 	Redis    RedisConfig
 	Auth0    Auth0Config
 	Otel     OtelConfig
+	CORS     CORSConfig
 }
 
 type ServerConfig struct {
@@ -50,6 +51,10 @@ type OtelConfig struct {
 	PyroscopeURL string
 }
 
+type CORSConfig struct {
+	AllowOrigins []string
+}
+
 func Load() (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -76,6 +81,9 @@ func Load() (*Config, error) {
 	}
 	if clientSecret, ok := viper.Get("AUTH0_CLIENT_SECRET").(string); ok {
 		cfg.Auth0.ClientSecret = clientSecret
+	}
+	if corsOrigins := viper.GetStringSlice("cors.allowOrigins"); len(corsOrigins) > 0 {
+		cfg.CORS.AllowOrigins = corsOrigins
 	}
 
 	return &cfg, nil
