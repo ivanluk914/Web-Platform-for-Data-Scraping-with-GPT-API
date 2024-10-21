@@ -19,7 +19,7 @@ func NewUserService(logger *otelzap.Logger, authClient clients.AuthClient) *User
 }
 
 func (s *UserService) ListUsers(ctx context.Context, page int64, pageSize int64) ([]*models.User, int64, error) {
-	users, total, err := s.authClient.ListUsers(ctx, page, pageSize)
+	users, total, err := s.authClient.ListUsers(ctx, page-1, pageSize) // auth0 is 0-indexed, api is 1-indexed
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to list users", zap.Int64("page", page), zap.Int64("page_size", pageSize), zap.Error(err))
 		return nil, 0, err

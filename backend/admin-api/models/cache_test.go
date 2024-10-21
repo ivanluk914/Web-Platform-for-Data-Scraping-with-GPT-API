@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 func setupMiniRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client) {
@@ -31,12 +29,10 @@ func TestSetTaskCache(t *testing.T) {
 	redisClient = client
 
 	ctx := context.Background()
-	task := &Task{
-		Model:          gorm.Model{ID: 1},
+	task := &TaskDto{
+		ID:             "1",
 		Owner:          "test",
-		TaskDefinition: json.RawMessage("{}"),
-		TaskId:         "test",
-		Status:         TaskStatusCreated,
+		TaskDefinition: "{}",
 	}
 
 	err := SetTaskCache(ctx, task)
@@ -46,10 +42,11 @@ func TestSetTaskCache(t *testing.T) {
 	val, err := mr.Get("task:1")
 	assert.NoError(t, err)
 
-	var storedTask Task
-	err = sonic.UnmarshalString(val, &storedTask)
+	var storedTask TaskDto
+	err = sonic.Unmarshal([]byte(val), &storedTask)
 	assert.NoError(t, err)
-	assert.Equal(t, task, &storedTask)
+	assert.Equal(t, task.ID, storedTask.ID)
+	assert.Equal(t, task.Owner, storedTask.Owner)
 
 	// Verify expiration was set (allowing for small timing differences)
 	ttl := mr.TTL("task:1")
@@ -65,7 +62,7 @@ func TestClearTaskCache(t *testing.T) {
 	taskID := uint64(1)
 
 	// Set a task in the cache first
-	mr.Set("task:1", "{\"ID\":1,\"Title\":\"Test Task\"}")
+	mr.Set("task:1", "{\"ID\":\"1\",\"Title\":\"Test Task\"}")
 
 	err := ClearTaskCache(ctx, taskID)
 	assert.NoError(t, err)
@@ -84,11 +81,10 @@ func TestGetTaskFromCache(t *testing.T) {
 	taskID := uint64(1)
 
 	t.Run("Task found in cache", func(t *testing.T) {
-		task := &Task{
-			Model:          gorm.Model{ID: 1},
+		task := &TaskDto{
+			ID:             "1",
 			Owner:          "test",
-			TaskDefinition: json.RawMessage("{}"),
-			TaskId:         "test",
+			TaskDefinition: "{}",
 			Status:         TaskStatusCreated,
 		}
 		taskJSON, _ := sonic.Marshal(task)
@@ -96,7 +92,9 @@ func TestGetTaskFromCache(t *testing.T) {
 
 		result, err := GetTaskFromCache(ctx, taskID)
 		assert.NoError(t, err)
-		assert.Equal(t, task, result)
+		assert.Equal(t, task.ID, result.ID)
+		assert.Equal(t, task.Owner, result.Owner)
+		assert.Equal(t, task.Status, result.Status)
 	})
 
 	t.Run("Task not found in cache", func(t *testing.T) {

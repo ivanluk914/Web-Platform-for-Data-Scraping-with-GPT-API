@@ -1,46 +1,53 @@
 package handlers
 
 import (
+	"admin-api/models"
 	"bytes"
 	"context"
-	"fmt"
-	"math/rand"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/bytedance/sonic"
-	"github.com/bytedance/sonic/decoder"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
-	"admin-api/models"
 )
 
-// MockTaskService is a mock implementation of the task service
 type MockTaskService struct {
 	mock.Mock
 }
 
-func (m *MockTaskService) GetTasksByUserId(ctx context.Context, userId string) ([]models.Task, error) {
+func (m *MockTaskService) GetTasksByUserId(ctx context.Context, userId string) ([]models.TaskDto, error) {
 	args := m.Called(ctx, userId)
-	return args.Get(0).([]models.Task), args.Error(1)
+	return args.Get(0).([]models.TaskDto), args.Error(1)
 }
 
-func (m *MockTaskService) GetTaskById(ctx context.Context, taskId string) (*models.Task, error) {
-	args := m.Called(ctx, taskId)
-	return args.Get(0).(*models.Task), args.Error(1)
+func (m *MockTaskService) GetTaskById(ctx context.Context, taskID string) (*models.TaskDto, error) {
+	args := m.Called(ctx, taskID)
+	return args.Get(0).(*models.TaskDto), args.Error(1)
 }
 
-func (m *MockTaskService) CreateTask(ctx context.Context, task models.TaskDefinition, userID string) (*models.Task, error) {
+func (m *MockTaskService) CreateTask(ctx context.Context, task models.Task, userID string) (*models.Task, error) {
 	args := m.Called(ctx, task, userID)
 	return args.Get(0).(*models.Task), args.Error(1)
 }
 
-func (m *MockTaskService) UpdateTask(ctx context.Context, task models.TaskDefinition, userID string, taskID string) (*models.Task, error) {
+func (m *MockTaskService) UpdateTask(ctx context.Context, task models.Task, userID string, taskID string) (*models.Task, error) {
 	args := m.Called(ctx, task, userID, taskID)
 	return args.Get(0).(*models.Task), args.Error(1)
+}
+
+func (m *MockTaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*models.TaskRunDto, error) {
+	args := m.Called(ctx, taskID)
+	return args.Get(0).([]*models.TaskRunDto), args.Error(1)
+}
+
+func (m *MockTaskService) GetTaskRunArtifacts(ctx context.Context, taskRunID string, page int, pageSize int) ([]*models.TaskRunArtifactDto, error) {
+	args := m.Called(ctx, taskRunID, page, pageSize)
+	return args.Get(0).([]*models.TaskRunArtifactDto), args.Error(1)
 }
 
 func setupTestRouter() (*gin.Engine, *MockTaskService) {
@@ -53,141 +60,200 @@ func setupTestRouter() (*gin.Engine, *MockTaskService) {
 
 func TestGetTasks(t *testing.T) {
 	r, mockService := setupTestRouter()
-	server := httptest.NewServer(r)
-	defer server.Close()
 
 	t.Run("Successful retrieval", func(t *testing.T) {
-		task1 := mockTaskDefinition()
-		taskJSON1, _ := sonic.Marshal(task1)
-		task2 := mockTaskDefinition()
-		taskJSON2, _ := sonic.Marshal(task2)
-		mockTasks := []models.Task{
-			{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON1},
-			{Owner: "user1", TaskId: "task2", Status: models.TaskStatusFailed, TaskDefinition: taskJSON2},
-		}
+		mockTasks := []models.TaskDto{{ID: "1", Owner: "user1"}, {ID: "2", Owner: "user1"}}
 		mockService.On("GetTasksByUserId", mock.Anything, "user1").Return(mockTasks, nil).Once()
 
-		resp, err := http.Get(fmt.Sprintf("%s/user/user1/task", server.URL))
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		req, _ := http.NewRequest("GET", "/user/user1/task", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
 
-		var response []models.Task
-		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response []models.TaskDto
+		err := sonic.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, mockTasks, response)
+	})
+
+	t.Run("Error retrieval", func(t *testing.T) {
+		mockService.On("GetTasksByUserId", mock.Anything, "user2").Return([]models.TaskDto{}, errors.New("database error")).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user2/task", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
 
 func TestGetTask(t *testing.T) {
 	r, mockService := setupTestRouter()
-	server := httptest.NewServer(r)
-	defer server.Close()
 
 	t.Run("Successful retrieval", func(t *testing.T) {
-		task := mockTaskDefinition()
-		taskJSON, _ := sonic.Marshal(task)
-		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON}
+		mockTask := &models.TaskDto{ID: "1", Owner: "user1"}
 		mockService.On("GetTaskById", mock.Anything, "1").Return(mockTask, nil).Once()
 
-		resp, err := http.Get(fmt.Sprintf("%s/user/user1/task/1", server.URL))
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		req, _ := http.NewRequest("GET", "/user/user1/task/1", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
 
-		var response models.Task
-		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response models.TaskDto
+		err := sonic.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, mockTask, &response)
+	})
+
+	t.Run("Error retrieval", func(t *testing.T) {
+		mockService.On("GetTaskById", mock.Anything, "2").Return((*models.TaskDto)(nil), errors.New("task not found")).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user1/task/2", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
 
 func TestCreateTask(t *testing.T) {
 	r, mockService := setupTestRouter()
-	server := httptest.NewServer(r)
-	defer server.Close()
 
 	t.Run("Successful creation", func(t *testing.T) {
-		task := mockTaskDefinition()
+		task := models.Task{Owner: "user1", TaskName: "New Task", TaskDefinition: json.RawMessage(`{}`)}
+		mockService.On("CreateTask", mock.Anything, task, "user1").Return(&task, nil).Once()
+
 		taskJSON, _ := sonic.Marshal(task)
-		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskJSON}
-		mockService.On("CreateTask", mock.Anything, task, "user1").Return(mockTask, nil).Once()
+		req, _ := http.NewRequest("POST", "/user/user1/task", bytes.NewBuffer(taskJSON))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
 
-		resp, err := http.Post(fmt.Sprintf("%s/user/user1/task", server.URL), "application/json", bytes.NewBuffer(taskJSON))
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusCreated, resp.StatusCode)
-
+		assert.Equal(t, http.StatusCreated, w.Code)
 		var response models.Task
-		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
+		err := sonic.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, mockTask, &response)
+		assert.Equal(t, task, response)
+	})
+
+	t.Run("Invalid JSON", func(t *testing.T) {
+		req, _ := http.NewRequest("POST", "/user/user1/task", bytes.NewBufferString("invalid json"))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
 func TestUpdateTask(t *testing.T) {
 	r, mockService := setupTestRouter()
-	server := httptest.NewServer(r)
-	defer server.Close()
 
 	t.Run("Successful update", func(t *testing.T) {
-		task := mockTaskDefinitionWithRandomPeriod()
+		task := models.Task{Owner: "user1", TaskName: "Updated Task"}
+		mockService.On("UpdateTask", mock.Anything, mock.AnythingOfType("models.Task"), "user1", "1").
+			Run(func(args mock.Arguments) {
+				// Verify that the task passed to the service has the correct ID
+				passedTaskID := args.Get(3).(string)
+				assert.Equal(t, "1", passedTaskID)
+			}).
+			Return(&task, nil).Once()
+
 		taskJSON, _ := sonic.Marshal(task)
-		mockTask := &models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusRunning, TaskDefinition: taskJSON}
-		mockService.On("UpdateTask", mock.Anything, task, "user1", "1").Return(mockTask, nil).Once()
-
-		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/user/user1/task/1", server.URL), bytes.NewBuffer(taskJSON))
+		req, _ := http.NewRequest("PUT", "/user/user1/task/1", bytes.NewBuffer(taskJSON))
 		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
 
+		assert.Equal(t, http.StatusOK, w.Code)
 		var response models.Task
-		err = decoder.NewStreamDecoder(resp.Body).Decode(&response)
+		err := sonic.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, mockTask, &response)
+		assert.Equal(t, task.ID, response.ID)
+		assert.Equal(t, task.Owner, response.Owner)
+		assert.Equal(t, task.TaskName, response.TaskName)
+	})
+
+	t.Run("Invalid JSON", func(t *testing.T) {
+		req, _ := http.NewRequest("PUT", "/user/user1/task/1", bytes.NewBufferString("invalid json"))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
-// mockTaskDefinition generates a mock TaskDefinition for testing
-func mockTaskDefinition() models.TaskDefinition {
-	return models.TaskDefinition{
-		Source: []models.UrlSource{
-			{
-				Type: models.SourceTypeUrl,
-				URL:  "https://example.com",
-			},
-		},
-		Target: []models.Target{
-			{
-				Type:  models.TargetTypeAuto,
-				Value: "auto-target",
-			},
-			{
-				Type:  models.TargetTypeXpath,
-				Name:  "xpath-target",
-				Value: "//div[@class='content']",
-			},
-		},
-		Output: []models.Output{
-			{
-				Type: models.OutputTypeJson,
-			},
-			{
-				Type:   models.OutputTypeGpt,
-				Prompt: "Summarize the content",
-			},
-		},
-		Period: models.TaskPeriodDaily,
-	}
+func TestListTaskRuns(t *testing.T) {
+	r, mockService := setupTestRouter()
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		mockTaskRuns := []*models.TaskRunDto{{TaskID: "1"}, {TaskID: "1"}}
+		mockService.On("ListTaskRuns", mock.Anything, "1").Return(mockTaskRuns, nil).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user1/task/1/run", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response []*models.TaskRunDto
+		err := sonic.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, mockTaskRuns, response)
+	})
+
+	t.Run("Error retrieval", func(t *testing.T) {
+		mockService.On("ListTaskRuns", mock.Anything, "2").Return([]*models.TaskRunDto{}, errors.New("database error")).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user1/task/2/run", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }
 
-// mockTaskDefinitionWithRandomPeriod generates a mock TaskDefinition with a random period
-func mockTaskDefinitionWithRandomPeriod() models.TaskDefinition {
-	task := mockTaskDefinition()
-	periods := []models.TaskPeriod{
-		models.TaskPeriodHourly,
-		models.TaskPeriodDaily,
-		models.TaskPeriodWeekly,
-		models.TaskPeriodMonthly,
-	}
-	task.Period = periods[rand.Intn(len(periods))]
-	return task
+func TestGetTaskRunArtifacts(t *testing.T) {
+	r, mockService := setupTestRouter()
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		mockArtifacts := []*models.TaskRunArtifactDto{{AirflowInstanceID: "1", AirflowTaskID: "1"}, {AirflowInstanceID: "2", AirflowTaskID: "1"}}
+		mockService.On("GetTaskRunArtifacts", mock.Anything, "1", 1, 10).Return(mockArtifacts, nil).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user1/task/1/run/1/artifact?page=1&pageSize=10", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response []*models.TaskRunArtifactDto
+		err := sonic.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, mockArtifacts, response)
+	})
+
+	t.Run("Invalid page number", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/user/user1/task/1/run/1/artifact?page=invalid", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Invalid page size", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/user/user1/task/1/run/1/artifact?pageSize=invalid", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Error retrieval", func(t *testing.T) {
+		mockService.On("GetTaskRunArtifacts", mock.Anything, "2", 1, 10).Return([]*models.TaskRunArtifactDto{}, errors.New("database error")).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user1/task/1/run/2/artifact?page=1&pageSize=10", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }

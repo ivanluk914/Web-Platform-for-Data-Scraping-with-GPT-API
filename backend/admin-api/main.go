@@ -125,7 +125,9 @@ func main() {
 		logger.Fatal("Failed to initialize Auth0 client", zap.Error(err))
 	}
 
-	taskService := services.NewTaskService(logger)
+	taskRunArtifactRepository := models.NewTaskRunArtifactRepository(models.GetScylla())
+
+	taskService := services.NewTaskService(logger, taskRunArtifactRepository)
 	userService := services.NewUserService(logger, auth0Client)
 
 	// Setup routes
