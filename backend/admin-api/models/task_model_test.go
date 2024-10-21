@@ -123,8 +123,9 @@ func TestCreateTask(t *testing.T) {
 		TaskDefinition: taskDefJSON,
 		AirflowTaskId:  "task1",
 	}
-	err = CreateTask(task)
+	createdTaskResult, err := CreateTask(task)
 	assert.NoError(t, err)
+	assert.NotNil(t, createdTaskResult)
 
 	// Verify the task was created
 	var createdTask Task
@@ -173,8 +174,9 @@ func TestUpdateTask(t *testing.T) {
 	require.NoError(t, err)
 	task.TaskDefinition = taskDefJSON
 
-	err = UpdateTask(task)
+	updatedTaskResult, err := UpdateTask(task)
 	assert.NoError(t, err)
+	assert.NotNil(t, updatedTaskResult)
 
 	// Verify the task was updated
 	var updatedTask Task

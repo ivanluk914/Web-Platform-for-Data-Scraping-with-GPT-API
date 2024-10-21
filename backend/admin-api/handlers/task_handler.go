@@ -16,7 +16,10 @@ type TaskService interface {
 	CreateTask(ctx context.Context, task models.Task, userID string) (*models.Task, error)
 	UpdateTask(ctx context.Context, task models.Task, userID string, taskID string) (*models.Task, error)
 	ListTaskRuns(ctx context.Context, taskRunID string) ([]*models.TaskRunDto, error)
+	CreateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error)
+	UpdateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error)
 	GetTaskRunArtifacts(ctx context.Context, taskRunID string, page int, pageSize int) ([]*models.TaskRunArtifactDto, error)
+	CreateTaskRunArtifact(ctx context.Context, artifact *models.CreateTaskRunArtifactDto) (*models.TaskRunArtifact, error)
 }
 
 type TaskHandler struct {
@@ -33,7 +36,10 @@ func SetupTaskRoutes(r *gin.RouterGroup, service TaskService) {
 		userTasks.POST("", handler.CreateTask)
 		userTasks.PUT("/:taskId", handler.UpdateTask)
 		userTasks.GET("/:taskId/run", handler.ListTaskRuns)
+		userTasks.POST("/:taskId/run", handler.CreateTaskRun)
+		userTasks.PUT("/:taskId/run/:runId", handler.UpdateTaskRun)
 		userTasks.GET("/:taskId/run/:runId/artifact", handler.GetTaskRunArtifacts)
+		userTasks.POST("/:taskId/run/:runId/artifact", handler.CreateTaskRunArtifact)
 	}
 }
 
@@ -99,6 +105,38 @@ func (h *TaskHandler) ListTaskRuns(c *gin.Context) {
 	c.JSON(http.StatusOK, taskRuns)
 }
 
+func (h *TaskHandler) CreateTaskRun(c *gin.Context) {
+	var taskRun models.TaskRun
+	if err := c.ShouldBindJSON(&taskRun); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	createdTaskRun, err := h.service.CreateTaskRun(c.Request.Context(), taskRun)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, createdTaskRun)
+}
+
+func (h *TaskHandler) UpdateTaskRun(c *gin.Context) {
+	var taskRun models.TaskRun
+	if err := c.ShouldBindJSON(&taskRun); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	createdTaskRun, err := h.service.UpdateTaskRun(c.Request.Context(), taskRun)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, createdTaskRun)
+}
+
 func (h *TaskHandler) GetTaskRunArtifacts(c *gin.Context) {
 	page, err := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
 	if err != nil {
@@ -118,4 +156,20 @@ func (h *TaskHandler) GetTaskRunArtifacts(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, taskRunArtifacts)
+}
+
+func (h *TaskHandler) CreateTaskRunArtifact(c *gin.Context) {
+	var taskRunArtifact models.CreateTaskRunArtifactDto
+	if err := c.ShouldBindJSON(&taskRunArtifact); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	createdTaskRunArtifact, err := h.service.CreateTaskRunArtifact(c.Request.Context(), &taskRunArtifact)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, createdTaskRunArtifact)
 }

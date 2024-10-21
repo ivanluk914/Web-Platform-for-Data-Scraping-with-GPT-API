@@ -136,18 +136,18 @@ func GetTaskById(jid uint64) (*Task, error) {
 	return task, nil
 }
 
-func CreateTask(task Task) error {
+func CreateTask(task Task) (*Task, error) {
 	result := db.Create(&task)
 	if result.Error != nil {
-		return result.Error
+		return nil, result.Error
 	}
-	return nil
+	return &task, nil
 }
 
-func UpdateTask(task Task) error {
+func UpdateTask(task Task) (*Task, error) {
 	result := db.Model(&task).Updates(task)
 	if result.Error != nil {
-		return result.Error
+		return nil, result.Error
 	}
-	return nil
+	return &task, nil
 }

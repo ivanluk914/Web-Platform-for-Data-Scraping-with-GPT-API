@@ -50,3 +50,18 @@ type TaskRunArtifactDto struct {
 	StatusCode        int
 	AdditionalData    map[string]string
 }
+
+type CreateTaskRunArtifactDto struct {
+	AirflowInstanceID string
+	AirflowTaskID     string
+	ArtifactID        string
+	CreatedAt         time.Time
+	ArtifactType      string
+	URL               string
+	ContentType       string
+	ContentLength     int
+	StatusCode        int
+	AdditionalData    map[string]string
+	S3Bucket          string
+	S3Key             string
+}

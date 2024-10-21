@@ -125,8 +125,9 @@ func TestCreateTaskRun(t *testing.T) {
 		ErrorMessage:      "",
 	}
 
-	err := CreateTaskRun(taskRun)
+	createdTaskRun, err := CreateTaskRun(taskRun)
 	assert.NoError(t, err)
+	assert.NotNil(t, createdTaskRun)
 
 	// Verify the task run was created
 	var createdRun TaskRun
@@ -158,8 +159,9 @@ func TestUpdateTaskRun(t *testing.T) {
 	taskRun.EndTime = time.Now().Add(2 * time.Hour)
 	taskRun.ErrorMessage = "Completed successfully"
 
-	err = UpdateTaskRun(taskRun)
+	updatedTaskRun, err := UpdateTaskRun(taskRun)
 	assert.NoError(t, err)
+	assert.NotNil(t, updatedTaskRun)
 
 	// Verify the task run was updated
 	var updatedRun TaskRun

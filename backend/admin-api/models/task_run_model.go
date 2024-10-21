@@ -95,18 +95,18 @@ func GetLatestRunForTask(uid uint64) (*TaskRun, error) {
 	return run, nil
 }
 
-func CreateTaskRun(taskRun TaskRun) error {
+func CreateTaskRun(taskRun TaskRun) (*TaskRun, error) {
 	result := db.Create(&taskRun)
 	if result.Error != nil {
-		return result.Error
+		return &taskRun, result.Error
 	}
-	return nil
+	return &taskRun, nil
 }
 
-func UpdateTaskRun(taskRun TaskRun) error {
+func UpdateTaskRun(taskRun TaskRun) (*TaskRun, error) {
 	result := db.Model(&taskRun).Updates(taskRun)
 	if result.Error != nil {
-		return result.Error
+		return &taskRun, result.Error
 	}
-	return nil
+	return &taskRun, nil
 }
