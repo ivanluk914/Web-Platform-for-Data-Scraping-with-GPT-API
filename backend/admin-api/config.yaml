@@ -8,7 +8,7 @@ postgres:
 scylla:
   hosts:
     - "scylla:9042"
-  keyspace: "crawltask_keyspace"
+  keyspace: "scraper_metadata"
 
 redis:
   address: "redis:6379"
