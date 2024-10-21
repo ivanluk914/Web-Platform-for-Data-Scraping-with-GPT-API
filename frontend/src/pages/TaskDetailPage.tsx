@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardBody, Button, Progress, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip } from "@nextui-org/react";
-import axios from 'axios';
+import { Card, CardBody, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip } from "@nextui-org/react";
 import { useAuth0 } from '@auth0/auth0-react';
+import { useHttp } from '../providers/http-provider';
+import { TaskStatus, OutputType, TaskPeriod, mapStatus, statusColorMap } from '../models/task';
+import { toast } from 'react-hot-toast';
 
-interface Task {
+interface MappedTask {
   id: string;
-  status: number;
-  createdAt: string;
-  updatedAt: string;
-  owner: string;
-  completedOn: string | null;
-  cancelledOn: string | null;
   url: string;
-  outputFormat: string;
-  keywords: string[];
-  dataType: string[];
-  outputType: string;
-  startDate: string;
-  endDate: string;
-  frequency: string;
-  frequencyUnit: string;
+  dateCreated: string;
+  timeCreated: string;
+  status: keyof typeof TaskStatus;
+  dateCanceled?: string;
+  timeCanceled?: string;
+  taskDefinition: {
+    source: { url: string }[];
+    output: { type: OutputType }[];
+    target: { name: string; value: string }[];
+    period: TaskPeriod;
+  };
 }
 
 const TaskDetailPage: React.FC = () => {
@@ -28,17 +27,34 @@ const TaskDetailPage: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [task, setTask] = useState<Task | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [task, setTask] = useState<MappedTask | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const http = useHttp();
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get(`http://localhost:8080/api/user/${user?.sub}/task/${taskId}`);
+        const response = await http.get(`/user/${user?.sub}/task/${taskId}`);
         console.log('Fetched task:', response.data);
-        // TODO: map response.data to Task type
+        const mappedTask: MappedTask = {
+          id: response.data.ID,
+          url: response.data.task_definition.source[0].url,
+          dateCreated: new Date(response.data.CreatedAt).toLocaleDateString(),
+          timeCreated: new Date(response.data.CreatedAt).toLocaleTimeString(),
+          status: mapStatus(response.data.status),
+          dateCanceled: response.data.CanceledAt ? new Date(response.data.CanceledAt).toLocaleDateString() : undefined,
+          timeCanceled: response.data.CanceledAt ? new Date(response.data.CanceledAt).toLocaleTimeString() : undefined,
+          taskDefinition: {
+            source: response.data.task_definition.source,
+            output: response.data.task_definition.output,
+            target: response.data.task_definition.target,
+            period: response.data.task_definition.period,
+          },
+        };
+        setTask(mappedTask);
         setError(null);
       } catch (err) {
         setError('Failed to fetch task details. Please try again later.');
@@ -49,7 +65,7 @@ const TaskDetailPage: React.FC = () => {
     };
 
     fetchTaskDetails();
-  }, [taskId]);
+  }, [taskId, user?.sub, http]);
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
@@ -57,6 +73,15 @@ const TaskDetailPage: React.FC = () => {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleCancelTask = async () => {
+    
+
+    console.log('Cancel task:', taskId);
+    setIsCancelModalOpen(false);
+    toast.success('Task canceled successfully');
+    navigate('/home/tasks');
   };
 
   const handleDeleteTask = async () => {
@@ -71,7 +96,8 @@ const TaskDetailPage: React.FC = () => {
     // Mock delete (remove this when connecting to backend)
     console.log('Delete task:', taskId);
     setIsDeleteModalOpen(false);
-    navigate('/tasks');
+    toast.success('Task deleted successfully');
+    navigate('/home/tasks');
   };
 
   const handleDownloadResult = async () => {
@@ -107,56 +133,65 @@ const TaskDetailPage: React.FC = () => {
     console.log('Generate AI summary for task:', taskId);
   };
 
-  const InfoBox: React.FC<{ label: string; value: string | null }> = ({ label, value }) => (
+  const InfoBox: React.FC<{ label: string; value: string | string[] | React.ReactNode }> = ({ label, value }) => (
     <div className="space-y-1">
-      <p className="font-semibold text-sm text-gray-500">{label}</p>
+      <div className="font-semibold text-sm text-gray-500">{label}</div>
       <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-        <p className="text-base text-gray-700">{value || 'N/A'}</p>
+        {typeof value === 'string' || Array.isArray(value) ? (
+          <p className="text-base text-gray-700">
+            {Array.isArray(value) ? value.join(', ') : value || 'N/A'}
+          </p>
+        ) : (
+          value
+        )}
       </div>
     </div>
   );
 
-  const statusColors: Record<Task['status'], "primary" | "success" | "danger"> = {
-    ongoing: "primary",
-    completed: "success",
-    cancelled: "danger"
-  };
+  const KeywordDataTypeList: React.FC<{ keywords: string[]; dataTypes: string[] }> = ({ keywords, dataTypes }) => (
+    <ul className="list-none space-y-1">
+      {keywords.map((keyword, index) => (
+        <li key={index} className="text-base text-gray-700">
+          {keyword} [{dataTypes[index] || 'N/A'}]
+        </li>
+      ))}
+    </ul>
+  );
 
-  const renderStatus = (status: Task['status']) => {
-    return <Chip color={statusColors[status]}>{status}</Chip>;
+  const renderStatus = (status: keyof typeof TaskStatus) => {
+    return <Chip color={statusColorMap[status]}>{status}</Chip>;
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-2">Task Details</h1>
       <div className="flex items-center space-x-4">
-        <p className="text-lg text-gray-600">Status: {renderStatus(task.status)}</p>
+        <div className="text-lg text-gray-800">Task ID: <b>{task.id}</b></div>
+        <div className="text-lg text-gray-600"> {renderStatus(task.status)}</div>
       </div>
 
       <Card className="rounded-xl shadow-lg">
         <CardBody className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InfoBox label="Task Name" value={task.name} />
-            <InfoBox label="Task created on" value={task.createdOn} />
-            <InfoBox label="Task completed on" value={task.completedOn} />
-            <InfoBox label="Task cancelled on" value={task.cancelledOn} />
+            <InfoBox label="Date Created" value={`${task.dateCreated}`} />
+            <InfoBox label="Time Created" value={`${task.timeCreated}`} />
+            {task.status === "canceled" && task.dateCanceled && task.timeCanceled && (
+              <InfoBox label="Canceled At" value={`${task.dateCanceled} ${task.timeCanceled}`} />
+            )}
             <InfoBox label="URL" value={task.url} />
-            <InfoBox label="Output Format" value={task.outputFormat} />
-            <InfoBox label="Keywords" value={task.keywords} />
-            <InfoBox label="Data Type" value={task.dataType} />
-            <InfoBox label="Frequency" value={task.frequency} />
+            <div className="h-1"></div>
+            <InfoBox label="Output Type" value={task.taskDefinition.output[0]?.type ? OutputType[task.taskDefinition.output[0].type] : 'N/A'} />
+            <InfoBox label="Period" value={TaskPeriod[task.taskDefinition.period]} />
+            <InfoBox 
+              label="Keywords [Data Types]" 
+              value={
+                <KeywordDataTypeList 
+                  keywords={task.taskDefinition.target.map(t => t.name)}
+                  dataTypes={task.taskDefinition.target.map(t => t.value)}
+                />
+              }
+            />
           </div>
-
-          {task.status === 'ongoing' && (
-            <div className="space-y-2">
-              <p className="font-semibold text-lg text-gray-700">Scrap Process</p>
-              <Progress 
-                value={task.scrapProcess} 
-                className="max-w-md rounded-full border border-gray-300" 
-              />
-              <p className="text-sm text-gray-500">{task.scrapProcess}% complete</p>
-            </div>
-          )}
         </CardBody>
       </Card>
 
@@ -164,17 +199,17 @@ const TaskDetailPage: React.FC = () => {
         <Button color="default" className="hover:opacity-80" onClick={handleBack}>
           Back
         </Button>
-        {task.status === 'ongoing' && (
-          <Button color="danger" className="hover:opacity-80" onClick={() => setIsDeleteModalOpen(true)}>
+        {(task.status === "ongoing" || task.status === "running") && (
+          <Button color="danger" className="hover:opacity-80" onClick={() => setIsCancelModalOpen(true)}>
             Cancel Task
           </Button>
         )}
-        {task.status !== 'ongoing' && (
+        {(task.status === "canceled" || task.status === "completed") && (
           <Button color="danger" className="hover:opacity-80" onClick={() => setIsDeleteModalOpen(true)}>
             Delete Task
           </Button>
         )}
-        {task.status === 'completed' && (
+        {(task.status === "ongoing" || task.status === "completed") && (
           <Button color="primary" className="hover:opacity-80" onClick={handleDownloadResult}>
             Download Result
           </Button>
@@ -184,22 +219,40 @@ const TaskDetailPage: React.FC = () => {
         </Button>
       </div>
 
+      <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">Confirm Cancellation</ModalHeader>
+          <ModalBody>
+            <p>Are you sure you want to cancel this task? This action cannot be undone.</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="default" variant="light" onPress={() => setIsCancelModalOpen(false)}>
+              No, Keep Task
+            </Button>
+            <Button color="danger" onPress={handleCancelTask}>
+              Yes, Cancel Task
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
         <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">Confirm {task.status === 'ongoing' ? 'Cancellation' : 'Deletion'}</ModalHeader>
+          <ModalHeader className="flex flex-col gap-1">Confirm Deletion</ModalHeader>
           <ModalBody>
-            <p>Are you sure you want to {task.status === 'ongoing' ? 'cancel' : 'delete'} this task? This action cannot be undone.</p>
+            <p>Are you sure you want to delete this task? This action cannot be undone.</p>
           </ModalBody>
           <ModalFooter>
             <Button color="default" variant="light" onPress={() => setIsDeleteModalOpen(false)}>
               No, Keep Task
             </Button>
             <Button color="danger" onPress={handleDeleteTask}>
-              Yes, {task.status === 'ongoing' ? 'Cancel' : 'Delete'} Task
+              Yes, Delete Task
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
+
     </div>
   );
 };
