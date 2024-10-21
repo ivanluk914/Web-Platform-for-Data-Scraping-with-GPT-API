@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Avatar, Button } from "@nextui-org/react";
-import { FiHome, FiPlusCircle, FiBell, FiUser, FiSettings, FiLogOut, FiUsers } from 'react-icons/fi';
+import { FiHome, FiPlusCircle, FiBell, FiUser, FiSettings, FiLogOut, FiUsers, FiList } from 'react-icons/fi';
 import { useAuth0 } from '@auth0/auth0-react';
 
 const Sidebar: React.FC = () => {
@@ -11,13 +11,13 @@ const Sidebar: React.FC = () => {
 
   const mainMenuItems = [
     { name: 'Home', icon: <FiHome />, path: '/home' },
-    { name: 'Task Management', icon: <FiPlusCircle />, path: '/home/tasks' },
+    { name: 'Task Management', icon: <FiList />, path: '/home/tasks' },
     { name: 'Create Task', icon: <FiPlusCircle />, path: '/home/create-task' },
     { name: 'Notifications', icon: <FiBell />, path: '/home/notifications' },
     { name: 'Profile', icon: <FiUser />, path: '/home/profile' },
     { name: 'Admin', icon: <FiSettings />, path: '/home/admin' },
   ];
-
+  
   const handleLogout = () => {
     localStorage.removeItem('hasVisitedHomePage');
     logout({ logoutParams: { returnTo: window.location.origin } });
@@ -43,6 +43,7 @@ const Sidebar: React.FC = () => {
               <li key={item.name}>
                 <NavLink
                   to={item.path}
+                  end={item.path === '/home'}
                   className={({ isActive }) =>
                     `flex items-center p-2 text-base font-normal rounded-lg ${
                       isActive ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-200'

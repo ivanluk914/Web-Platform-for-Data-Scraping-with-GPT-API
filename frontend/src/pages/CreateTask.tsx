@@ -8,6 +8,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'react-hot-toast';
 import { useHttp } from '../providers/http-provider';
 import { validateURL, validateNonEmptyArray, validatePositiveInteger } from '../utils/validationUtils';
+import { outputTypeMap, periodMap } from '../models/task';
 
 const TaskCreation = () => {
   // State for form fields
@@ -23,7 +24,7 @@ const TaskCreation = () => {
   const form1 = [
     { label: "CSV", value: "CSV" },
     { label: "JSON", value: "JSON" },
-    { label: "XML", value: "XML" }
+    { label: "Markdown", value: "Markdown" }
   ];
   
   const today = new Date();
@@ -41,13 +42,14 @@ const TaskCreation = () => {
   const [dataTypes, setDataTypes] = useState(['']);
   const [content, setContent] = useState(''); // Add this line to define content state
 
-  const axiosInstance = useHttp(); // get the axios instance from the http-provider
+  const http = useHttp(); // Use the useHttp hook
 
   const sendTaskToBackend = async () => {
     try {
-      const response = await axiosInstance.post(`http://localhost:5001/api/${user?.sub}/task`, {
+      const response = await http.post(`http://localhost:5001/api/${user?.sub}/task`, {
         sourceURL,
         keywords,
+        dataTypes,
         outputFormat,
         startDate,
         endDate,
@@ -105,10 +107,9 @@ const TaskCreation = () => {
   };
 
   const addField = () => {
-    //add function forset datatypes and key words
-
-    setKeywords([...keywords, '']); 
-    setDataTypes([...dataTypes, '']); 
+    // Ensure existing keywords and dataTypes are preserved
+    setKeywords((prevKeywords) => [...prevKeywords, '']);
+    setDataTypes((prevDataTypes) => [...prevDataTypes, '']);
   };
   
   const removeField = (index: number) => {
@@ -134,16 +135,50 @@ const TaskCreation = () => {
       setIsVisible('block');
     }
     const navigate = useNavigate();
-    const continueTask = () => {
-      localStorage.getItem('hasCreatedTask');
-      toast.success(`Task created successfully!`);
-      localStorage.removeItem('hasCreatedTask');
-      //TODO: add task to BE
-      //logic:
-      //1. get task with user_id to BE
-      //2. navigate to /home/task-management/ongoing
-      navigate('/home'); // path can be changed to /home/task-management/ongoing once implemented
-    }
+    const continueTask = async () => {
+      try {
+        const taskDefinition = {
+          source: [{ type: 1, url: sourceURL }],
+          target: keywords.map((keyword, index) => ({
+            type: 1,
+            name: keyword,
+            value: dataTypes[index]
+          })),
+          output: [{ type: outputTypeMap[outputFormat] }],
+          period: periodMap[frequencyUnit] // taskPeriod is only Hourly, Daily, Weekly, Monthly for now
+
+          // dateRange is not implemented in BE yet
+          // dateRange: {
+          //   start: startDate,
+          //   end: endDate
+          // }
+        };
+
+        const response = await http.post(`/user/${user?.sub}/task`, taskDefinition);
+
+        if (response.status === 201) {
+          toast.success(`Task created successfully!`);
+          localStorage.removeItem('hasCreatedTask');
+          navigate('/home'); // path can be changed to /home/task-management/ongoing once implemented
+        }
+      } catch (error) {
+        console.error('Error creating task:', error);
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error(error.response.data);
+          console.error(error.response.status);
+          console.error(error.response.headers);
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error(error.request);
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('Error', error.message);
+        }
+        toast.error('Failed to create task. Please try again.');
+      }
+    };
 
   const handleDateChange = (setter: React.Dispatch<React.SetStateAction<CalendarDate | null>>) => (date: CalendarDate | null) => {
     if (date) {
@@ -188,7 +223,8 @@ const TaskCreation = () => {
                       placeholder="e.g product_price"
                       value={keyword} 
                       onChange={(e) => handleKeywordChange(index, e.target.value)}  
-                      style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }} 
+                      style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
+                      aria-label="Keyword"
                     />
                   </div>
                   {/* datatype Field */}
@@ -203,6 +239,7 @@ const TaskCreation = () => {
                         { label: "Table", value: "Table" }
                       ]}
                       onSelectionChange={(value) => handleDataTypeChange(index, value)}
+                      aria-label="Data Type"
                     >
                       {(item) => <AutocompleteItem key={item.label}>{item.label}</AutocompleteItem>}
                     </Autocomplete>
@@ -282,9 +319,10 @@ const TaskCreation = () => {
               label="Frequency Unit"
               placeholder="Search or select a Unit"
               defaultItems={[
-                { label: "Mins", value: "Mins" },
-                { label: "Hours", value: "Hours" },
-                { label: "Days", value: "Days" }
+                { label: "Hourly", value: "Hourly" },
+                { label: "Daily", value: "Daily" },
+                { label: "Weekly", value: "Weekly" },
+                { label: "Monthly", value: "Monthly" }
               ]}
               onSelectionChange={(value) => setFrequencyUnit(value)}
             >

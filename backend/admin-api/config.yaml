@@ -21,3 +21,7 @@ otel:
   endpoint: "otel-collector:4317"
   endpointhttp: "otel-collector:4318"
   pyroscopeurl: "http://pyroscope:4040"
+
+cors:
+  allowOrigins:
+    - "http://localhost:5173"

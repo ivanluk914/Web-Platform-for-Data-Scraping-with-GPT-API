@@ -96,11 +96,33 @@ type Output struct {
 	Prompt string     `json:"prompt,omitempty"`
 }
 
+// TODO: add period and date range
+// type TaskPeriod struct {
+// 	Frequency string `json:"frequency"`
+// 	FrequencyUnit int64 `json:"frequency_unit"`
+// }
+
+// const (
+// 	TaskPeriodUnknown FrequencyUnit = iota
+// 	TaskPeriodHourly
+// 	TaskPeriodDaily
+// 	TaskPeriodWeekly
+// 	TaskPeriodMonthly
+// )
+
+// type DateRange struct {
+// 	Start string `json:"start"`
+// 	End   string `json:"end"`
+// }
+
 type TaskDefinition struct {
 	Source []UrlSource `json:"source"`
 	Target []Target    `json:"target"`
 	Output []Output    `json:"output"`
 	Period TaskPeriod  `json:"period"`
+	// TODO: add period and date range
+	// Period []TaskPeriod  `json:"period"`
+	// DateRange string `json:"date_range"`
 }
 
 type TaskStatus int64
@@ -111,6 +133,7 @@ const (
 	TaskStatusRunning
 	TaskStatusComplete
 	TaskStatusFailed
+	// TaskStatusCanceled
 )
 
 // Scan implements the sql.Scanner interface

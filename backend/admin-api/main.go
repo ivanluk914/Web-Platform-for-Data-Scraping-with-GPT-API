@@ -83,7 +83,15 @@ func main() {
 	if cfg.Server.IsProd() {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	r := gin.New()
+
+	r := gin.Default()
+
+	// CORS configuration
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = cfg.CORS.AllowOrigins
+	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, "Authorization")
+
+	r.Use(cors.New(corsConfig))
 
 	// Use zap logger for Gin
 	r.Use(otelgin.Middleware(serviceName, otelgin.WithGinFilter(func(c *gin.Context) bool {
