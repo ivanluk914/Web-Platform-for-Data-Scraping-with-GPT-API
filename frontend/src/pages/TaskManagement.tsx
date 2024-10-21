@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Tooltip, Link } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@nextui-org/react";
 import { useNavigate } from 'react-router-dom';
 import { useHttp } from '../providers/http-provider';
 import { useAuth0 } from '@auth0/auth0-react';
-import { MdOutlineDeleteForever } from "react-icons/md";
+import { MdOutlineDeleteForever, MdOutlineCancel } from "react-icons/md";
 import { GrView } from "react-icons/gr";
 import { Task, mapStatus, statusColorMap } from '../models/task';
+import { toast } from 'react-hot-toast';
 
 const columns = [
   { name: "URL", uid: "url" },
@@ -22,6 +24,9 @@ const TaskManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const http = useHttp();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Fetch tasks from backend
   useEffect(() => {
@@ -53,14 +58,37 @@ const TaskManagement: React.FC = () => {
     navigate(`/home/tasks/${taskId}`);
   };
 
-const handleDeleteTask = async (taskId: string) => {
-  try {
-    await http.delete(`/user/${user?.sub}/task/${taskId}`);
-    setTasks(tasks.filter(task => task.id !== taskId));
-  } catch (err) {
-    console.error('Error deleting task:', err);
-  }
-};
+  const handleDeleteTask = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCancelTask = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setIsCancelModalOpen(true);
+  };
+
+  const confirmDeleteTask = async () => {
+    if (selectedTaskId) {
+      console.log('Confirmed deletion of task:', selectedTaskId);
+      // TODO: Implement deletion logic
+      setIsDeleteModalOpen(false);
+      setSelectedTaskId(null);
+      toast.success('Task deleted successfully');
+      navigate('/home/tasks');
+    }
+  };
+
+  const confirmCancelTask = async () => {
+    if (selectedTaskId) {
+      console.log('Confirmed cancellation of task:', selectedTaskId);
+      // TODO: Implement cancellation logic
+      setIsCancelModalOpen(false);
+      setSelectedTaskId(null);
+      toast.success('Task canceled successfully');
+      navigate('/home/tasks');
+    }
+  };
 
   const renderCell = useCallback((task: Task, columnKey: React.Key) => {
     const cellValue = task[columnKey as keyof Task];
@@ -86,11 +114,19 @@ const handleDeleteTask = async (taskId: string) => {
                 <GrView />
               </span>
             </Tooltip>
-            <Tooltip color="danger" content="Delete Task" delay={0} closeDelay={0} size="sm">
-              <span className="text-lg text-danger cursor-pointer active:opacity-50" onClick={() => handleDeleteTask(task.id)}>
-                <MdOutlineDeleteForever />  
-              </span>
-            </Tooltip>
+            {task.status !== 'ongoing' && task.status !== 'running' ? (
+              <Tooltip color="danger" content="Delete Task" delay={0} closeDelay={0} size="sm">
+                <span className="text-lg text-danger cursor-pointer active:opacity-50" onClick={() => handleDeleteTask(task.id)}>
+                  <MdOutlineDeleteForever />  
+                </span>
+              </Tooltip>
+            ) : (
+              <Tooltip color="primary" content="Cancel Task" delay={0} closeDelay={0} size="sm">
+                <span className="text-lg text-primary cursor-pointer active:opacity-50" onClick={() => handleCancelTask(task.id)}>
+                  <MdOutlineCancel />
+                </span>
+              </Tooltip>
+            )}
           </div>
         );
       default:
@@ -120,6 +156,40 @@ const handleDeleteTask = async (taskId: string) => {
           )}
         </TableBody>
       </Table>
+      
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">Confirm Deletion</ModalHeader>
+          <ModalBody>
+            <p>Are you sure you want to delete this task? This action cannot be undone.</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="default" variant="light" onPress={() => setIsDeleteModalOpen(false)}>
+              No, Keep Task
+            </Button>
+            <Button color="danger" onPress={confirmDeleteTask}>
+              Yes, Delete Task
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">Confirm Cancellation</ModalHeader>
+          <ModalBody>
+            <p>Are you sure you want to cancel this task? This action cannot be undone.</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="default" variant="light" onPress={() => setIsCancelModalOpen(false)}>
+              No, Keep Task
+            </Button>
+            <Button color="danger" onPress={confirmCancelTask}>
+              Yes, Cancel Task
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

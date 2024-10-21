@@ -9,10 +9,10 @@ export enum TaskStatus {
 
 export enum OutputType {
   Unknown = 0,
-  Json = 1,
-  Csv = 2,
-  Gpt = 3,
-  Markdown = 4
+  JSON = 1,
+  CSV = 2,
+  GPT = 3,
+  MARKDOWN = 4
 }
 
 export enum TaskPeriod {
@@ -66,18 +66,18 @@ export const mapStatus = (status: number): keyof typeof TaskStatus => {
 
 export const statusColorMap: Record<keyof typeof TaskStatus, "primary" | "success" | "danger" | "warning" | "default"> = {
   Unknown: "default",
-  ongoing: "default",
-  running: "primary",
+  ongoing: "primary",
+  running: "default",
   completed: "success",
   failed: "warning",
   canceled: "danger"
 };
 
 export const outputTypeMap: Record<string, OutputType> = {
-  JSON: OutputType.Json,
-  CSV: OutputType.Csv,
-  GPT: OutputType.Gpt,
-  Markdown: OutputType.Markdown
+  JSON: OutputType.JSON,
+  CSV: OutputType.CSV,
+  GPT: OutputType.GPT,
+  MARKDOWN: OutputType.MARKDOWN
 };
 
 export const periodMap: Record<string, TaskPeriod> = {

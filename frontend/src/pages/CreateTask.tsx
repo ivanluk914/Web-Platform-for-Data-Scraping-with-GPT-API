@@ -24,7 +24,7 @@ const TaskCreation = () => {
   const form1 = [
     { label: "CSV", value: "CSV" },
     { label: "JSON", value: "JSON" },
-    { label: "Markdown", value: "Markdown" }
+    { label: "MARKDOWN", value: "MARKDOWN" }
   ];
   
   const today = new Date();
@@ -347,7 +347,6 @@ const TaskCreation = () => {
         
         {keywords.length > 0 && keywords[0] !== '' && (
           <div>
-            {/* 使用 map 方法历列表并渲染每个 Chip */}
             {keywords.map((item, index) => (
               <Chip 
                 key={index}
