@@ -1,13 +1,18 @@
 package models
 
 import (
-	"database/sql/driver"
 	"encoding/json"
-	"errors"
-	"fmt"
 
-	"github.com/bytedance/sonic"
 	"gorm.io/gorm"
+)
+
+type TaskRunType int64
+
+const (
+	TaskRunTypeUnknown TaskRunType = iota
+	TaskRunTypePreview
+	TaskRunTypeSingle
+	TaskRunTypePeriodic
 )
 
 type OutputType int64
@@ -92,88 +97,25 @@ type Target struct {
 }
 
 type Output struct {
-	Type   OutputType `json:"type"`
-	Prompt string     `json:"prompt,omitempty"`
+	Type  OutputType `json:"type"`
+	Name  string     `json:"name,omitempty"`
+	Value string     `json:"value"`
 }
 
-// TODO: add period and date range
-// type TaskPeriod struct {
-// 	Frequency string `json:"frequency"`
-// 	FrequencyUnit int64 `json:"frequency_unit"`
-// }
-
-// const (
-// 	TaskPeriodUnknown FrequencyUnit = iota
-// 	TaskPeriodHourly
-// 	TaskPeriodDaily
-// 	TaskPeriodWeekly
-// 	TaskPeriodMonthly
-// )
-
-// type DateRange struct {
-// 	Start string `json:"start"`
-// 	End   string `json:"end"`
-// }
-
 type TaskDefinition struct {
+	Type   TaskRunType `json:"type"`
 	Source []UrlSource `json:"source"`
 	Target []Target    `json:"target"`
 	Output []Output    `json:"output"`
 	Period TaskPeriod  `json:"period"`
-	// TODO: add period and date range
-	// Period []TaskPeriod  `json:"period"`
-	// DateRange string `json:"date_range"`
-}
-
-type TaskStatus int64
-
-const (
-	TaskStatusUnknown TaskStatus = iota
-	TaskStatusCreated
-	TaskStatusRunning
-	TaskStatusComplete
-	TaskStatusFailed
-	// TaskStatusCanceled
-)
-
-// Scan implements the sql.Scanner interface
-func (r *TaskStatus) Scan(value interface{}) error {
-	intValue, ok := value.(int64)
-	if !ok {
-		return errors.New("invalid value for TaskStatus")
-	}
-	*r = TaskStatus(intValue)
-	return nil
-}
-
-// Value implements the driver.Valuer interface
-func (r TaskStatus) Value() (driver.Value, error) {
-	return int64(r), nil
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface
-func (r *TaskStatus) UnmarshalJSON(data []byte) error {
-	var v int64
-	if err := sonic.Unmarshal(data, &v); err != nil {
-		return err
-	}
-	switch TaskStatus(v) {
-	case TaskStatusCreated, TaskStatusRunning, TaskStatusComplete, TaskStatusFailed:
-		*r = TaskStatus(v)
-		return nil
-	case TaskStatusUnknown:
-		return fmt.Errorf("TaskStatus must not be empty")
-	default:
-		return fmt.Errorf("invalid TaskStatus value: %d", v)
-	}
 }
 
 type Task struct {
 	gorm.Model
 	Owner          string          `json:"owner" gorm:"index:idx_owner"`
-	TaskDefinition json.RawMessage `gorm:"type:jsonb" json:"task_definition"`
-	TaskId         string          `json:"task_id" gorm:"index:idx_task_id"`
-	Status         TaskStatus      `json:"status"`
+	TaskName       string          `json:"task_name"`
+	TaskDefinition json.RawMessage `json:"task_definition" gorm:"type:jsonb"`
+	AirflowTaskId  string          `json:"airflow_task_id"`
 }
 
 func GetTasksByUserId(uid string) ([]Task, error) {

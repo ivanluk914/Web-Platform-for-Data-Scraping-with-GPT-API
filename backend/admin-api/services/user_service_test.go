@@ -74,7 +74,7 @@ func TestListUsers(t *testing.T) {
 			{ID: &id1, Name: &name1, Email: &email1},
 			{ID: &id2, Name: &name2, Email: &email2},
 		}
-		mockAuthClient.On("ListUsers", ctx, int64(1), int64(10)).Return(expectedUsers, int64(2), nil).Once()
+		mockAuthClient.On("ListUsers", ctx, int64(0), int64(10)).Return(expectedUsers, int64(2), nil).Once()
 
 		users, total, err := service.ListUsers(ctx, 1, 10)
 		assert.NoError(t, err)
@@ -83,7 +83,7 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Error from AuthClient", func(t *testing.T) {
-		mockAuthClient.On("ListUsers", ctx, int64(1), int64(10)).Return([]*models.User(nil), int64(0), errors.New("auth client error")).Once()
+		mockAuthClient.On("ListUsers", ctx, int64(0), int64(10)).Return([]*models.User(nil), int64(0), errors.New("auth client error")).Once()
 
 		users, total, err := service.ListUsers(ctx, 1, 10)
 		assert.Error(t, err)

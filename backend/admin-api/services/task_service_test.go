@@ -5,6 +5,7 @@ import (
 	"context"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/bytedance/sonic"
@@ -21,7 +22,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
-	err = db.AutoMigrate(&models.Task{})
+	err = db.AutoMigrate(&models.Task{}, &models.TaskRun{})
 	require.NoError(t, err)
 
 	models.SetDB(db)
@@ -47,7 +48,8 @@ func setupMiniRedis(t *testing.T) *miniredis.Miniredis {
 
 func setupTestService(t *testing.T) (*TaskService, *gorm.DB, *miniredis.Miniredis) {
 	logger, _ := zap.NewDevelopment()
-	service := NewTaskService(otelzap.New(logger))
+	taskRunArtifactRepo := &models.TaskRunArtifactRepository{}
+	service := NewTaskService(otelzap.New(logger), taskRunArtifactRepo)
 	db := setupTestDB(t)
 	mr := setupMiniRedis(t)
 	return service, db, mr
@@ -65,8 +67,8 @@ func TestGetTasksByUserId(t *testing.T) {
 		taskDefinitionJSON1, _ := sonic.Marshal(taskDefinition1)
 		taskDefinitionJSON2, _ := sonic.Marshal(taskDefinition2)
 		expectedTasks := []models.Task{
-			{Owner: userId, TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskDefinitionJSON1},
-			{Owner: userId, TaskId: "task2", Status: models.TaskStatusRunning, TaskDefinition: taskDefinitionJSON2},
+			{Owner: userId, TaskName: "Task 1", TaskDefinition: taskDefinitionJSON1},
+			{Owner: userId, TaskName: "Task 2", TaskDefinition: taskDefinitionJSON2},
 		}
 		for _, task := range expectedTasks {
 			require.NoError(t, db.Create(&task).Error)
@@ -75,14 +77,8 @@ func TestGetTasksByUserId(t *testing.T) {
 		tasks, err := service.GetTasksByUserId(ctx, userId)
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 2)
-		assert.Equal(t, expectedTasks[0].TaskId, tasks[0].TaskId)
-		assert.Equal(t, expectedTasks[1].TaskId, tasks[1].TaskId)
-
-		var updatedTaskDefinition1, updatedTaskDefinition2 models.TaskDefinition
-		sonic.Unmarshal(tasks[0].TaskDefinition, &updatedTaskDefinition1)
-		sonic.Unmarshal(tasks[1].TaskDefinition, &updatedTaskDefinition2)
-		assert.Equal(t, taskDefinition1, updatedTaskDefinition1)
-		assert.Equal(t, taskDefinition2, updatedTaskDefinition2)
+		assert.Equal(t, expectedTasks[0].TaskName, tasks[0].TaskName)
+		assert.Equal(t, expectedTasks[1].TaskName, tasks[1].TaskName)
 	})
 
 	t.Run("No tasks found", func(t *testing.T) {
@@ -101,18 +97,14 @@ func TestGetTaskById(t *testing.T) {
 	t.Run("Successful retrieval", func(t *testing.T) {
 		taskDefinition := mockTaskDefinition()
 		taskDefinitionJSON, _ := sonic.Marshal(taskDefinition)
-		expectedTask := models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: taskDefinitionJSON}
+		expectedTask := models.Task{Owner: "user1", TaskName: "Task 1", TaskDefinition: taskDefinitionJSON}
 		require.NoError(t, db.Create(&expectedTask).Error)
 
 		task, err := service.GetTaskById(ctx, "1")
 		assert.NoError(t, err)
 		assert.NotNil(t, task)
 		assert.Equal(t, expectedTask.Owner, task.Owner)
-		assert.Equal(t, expectedTask.TaskId, task.TaskId)
-
-		var updatedTaskDefinition models.TaskDefinition
-		sonic.Unmarshal(task.TaskDefinition, &updatedTaskDefinition)
-		assert.Equal(t, taskDefinition, updatedTaskDefinition)
+		assert.Equal(t, expectedTask.TaskName, task.TaskName)
 	})
 
 	t.Run("Task not found", func(t *testing.T) {
@@ -136,18 +128,20 @@ func TestCreateTask(t *testing.T) {
 
 	t.Run("Successful creation", func(t *testing.T) {
 		taskDefinition := mockTaskDefinition()
+		taskDefinitionJSON, _ := sonic.Marshal(taskDefinition)
 		userId := "user1"
 
-		task, err := service.CreateTask(ctx, taskDefinition, userId)
-		assert.NoError(t, err)
-		assert.NotNil(t, task)
-		assert.Equal(t, userId, task.Owner)
-		assert.Equal(t, models.TaskStatusCreated, task.Status)
+		task := models.Task{
+			Owner:          userId,
+			TaskName:       "New Task",
+			TaskDefinition: taskDefinitionJSON,
+		}
 
-		var updatedTaskDefinition models.TaskDefinition
-		err = sonic.Unmarshal(task.TaskDefinition, &updatedTaskDefinition)
+		createdTask, err := service.CreateTask(ctx, task, userId)
 		assert.NoError(t, err)
-		assert.Equal(t, taskDefinition, updatedTaskDefinition)
+		assert.NotNil(t, createdTask)
+		assert.Equal(t, userId, createdTask.Owner)
+		assert.Equal(t, "New Task", createdTask.TaskName)
 	})
 }
 
@@ -159,35 +153,70 @@ func TestUpdateTask(t *testing.T) {
 	t.Run("Successful update", func(t *testing.T) {
 		initialTaskDefinition := mockTaskDefinition()
 		initialTaskDefinitionJSON, _ := sonic.Marshal(initialTaskDefinition)
-		initialTask := models.Task{Owner: "user1", TaskId: "task1", Status: models.TaskStatusCreated, TaskDefinition: initialTaskDefinitionJSON}
+		initialTask := models.Task{Owner: "user1", TaskName: "Initial Task", TaskDefinition: initialTaskDefinitionJSON}
 		require.NoError(t, db.Create(&initialTask).Error)
 
 		newTaskDefinition := mockTaskDefinitionWithRandomPeriod()
+		newTaskDefinitionJSON, _ := sonic.Marshal(newTaskDefinition)
+		updatedTask := models.Task{
+			TaskName:       "Updated Task",
+			TaskDefinition: newTaskDefinitionJSON,
+		}
 
-		updatedTask, err := service.UpdateTask(ctx, newTaskDefinition, "user1", "1")
+		result, err := service.UpdateTask(ctx, updatedTask, "user1", "1")
 		assert.NoError(t, err)
-		assert.NotNil(t, updatedTask)
-		assert.Equal(t, "user1", updatedTask.Owner)
-		assert.Equal(t, models.TaskStatusCreated, updatedTask.Status)
-
-		var updatedTaskDefinition models.TaskDefinition
-		err = sonic.Unmarshal(updatedTask.TaskDefinition, &updatedTaskDefinition)
-		assert.NoError(t, err)
-		assert.Equal(t, updatedTaskDefinition, updatedTaskDefinition)
+		assert.NotNil(t, result)
+		assert.Equal(t, "user1", result.Owner)
+		assert.Equal(t, "Updated Task", result.TaskName)
 	})
 
 	t.Run("Task not found", func(t *testing.T) {
 		taskDefinition := mockTaskDefinition()
-		updatedTask, err := service.UpdateTask(ctx, taskDefinition, "user1", "999")
+		taskDefinitionJSON, _ := sonic.Marshal(taskDefinition)
+		updatedTask := models.Task{
+			TaskName:       "Updated Task",
+			TaskDefinition: taskDefinitionJSON,
+		}
+		result, err := service.UpdateTask(ctx, updatedTask, "user1", "999")
 		assert.Error(t, err)
-		assert.Nil(t, updatedTask)
+		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "task not found")
+	})
+}
+
+func TestListTaskRuns(t *testing.T) {
+	service, db, mr := setupTestService(t)
+	defer mr.Close()
+	ctx := context.Background()
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		taskID := uint(1)
+		expectedRuns := []models.TaskRun{
+			{TaskID: taskID, Status: models.TaskStatusComplete, StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)},
+			{TaskID: taskID, Status: models.TaskStatusFailed, StartTime: time.Now().Add(-time.Hour), EndTime: time.Now()},
+		}
+		for _, run := range expectedRuns {
+			require.NoError(t, db.Create(&run).Error)
+		}
+
+		runs, err := service.ListTaskRuns(ctx, "1")
+		assert.NoError(t, err)
+		assert.Len(t, runs, 2)
+		assert.Equal(t, models.TaskStatusComplete, runs[0].Status)
+		assert.Equal(t, models.TaskStatusFailed, runs[1].Status)
+	})
+
+	t.Run("No runs found", func(t *testing.T) {
+		runs, err := service.ListTaskRuns(ctx, "999")
+		assert.NoError(t, err)
+		assert.Len(t, runs, 0)
 	})
 }
 
 // mockTaskDefinition generates a mock TaskDefinition for testing
 func mockTaskDefinition() models.TaskDefinition {
 	return models.TaskDefinition{
+		Type: models.TaskRunTypePreview,
 		Source: []models.UrlSource{
 			{
 				Type: models.SourceTypeUrl,
@@ -210,8 +239,8 @@ func mockTaskDefinition() models.TaskDefinition {
 				Type: models.OutputTypeJson,
 			},
 			{
-				Type:   models.OutputTypeGpt,
-				Prompt: "Summarize the content",
+				Type:  models.OutputTypeGpt,
+				Value: "Summarize the content",
 			},
 		},
 		Period: models.TaskPeriodDaily,

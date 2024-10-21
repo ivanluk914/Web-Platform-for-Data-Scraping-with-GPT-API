@@ -21,7 +21,6 @@ var (
 	db            *gorm.DB
 	scyllaSession *gocql.Session
 	redisClient   *redis.Client
-	logger        *otelzap.Logger
 )
 
 func InitDB(ctx context.Context, logger *otelzap.Logger, postgresConfig config.PostgresConfig,
@@ -102,6 +101,9 @@ func GetScylla() *gocql.Session {
 func migrateSchemas() error {
 	if err := db.AutoMigrate(&Task{}); err != nil {
 		return errors.Wrap(err, "Failed to auto migrate Task schema")
+	}
+	if err := db.AutoMigrate(&TaskRun{}); err != nil {
+		return errors.Wrap(err, "Failed to auto migrate TaskRun schema")
 	}
 	return nil
 }

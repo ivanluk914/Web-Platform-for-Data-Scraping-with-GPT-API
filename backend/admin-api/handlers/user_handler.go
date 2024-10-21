@@ -39,7 +39,7 @@ func SetupUserRoutes(r *gin.RouterGroup, service UserService) {
 }
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	page, err := strconv.ParseInt(c.DefaultQuery("page", "0"), 10, 64)
+	page, err := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
