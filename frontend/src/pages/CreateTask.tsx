@@ -8,6 +8,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'react-hot-toast';
 import { useHttp } from '../providers/http-provider';
 import { validateURL, validateNonEmptyArray, validatePositiveInteger } from '../utils/validationUtils';
+import { outputTypeMap, periodMap } from '../models/task';
 
 const TaskCreation = () => {
   // State for form fields
@@ -41,11 +42,11 @@ const TaskCreation = () => {
   const [dataTypes, setDataTypes] = useState(['']);
   const [content, setContent] = useState(''); // Add this line to define content state
 
-  const axiosInstance = useHttp(); // get the axios instance from the http-provider
+  const http = useHttp(); // Use the useHttp hook
 
   const sendTaskToBackend = async () => {
     try {
-      const response = await axiosInstance.post(`http://localhost:5001/api/${user?.sub}/task`, {
+      const response = await http.post(`http://localhost:5001/api/${user?.sub}/task`, {
         sourceURL,
         keywords,
         dataTypes,
@@ -136,38 +137,24 @@ const TaskCreation = () => {
     const navigate = useNavigate();
     const continueTask = async () => {
       try {
-        const outputTypeMap = {
-          JSON: 1, // OutputTypeJson
-          CSV: 2,  // OutputTypeCsv
-          GPT: 3,  // OutputTypeGpt
-          Markdown: 4 // OutputTypeMarkdown
-        };
-
-        const periodMap = {
-          Mins: 1,   // TaskPeriodHourly
-          Hours: 2,  // TaskPeriodDaily
-          Days: 3    // TaskPeriodWeekly
-        };
-
         const taskDefinition = {
-          source: [{ type: 1, url: sourceURL }], // Use the integer value for SourceTypeUrl
+          source: [{ type: 1, url: sourceURL }],
           target: keywords.map((keyword, index) => ({
-            type: 1, // Use the integer value for TargetTypeAuto
+            type: 1,
             name: keyword,
             value: dataTypes[index]
           })),
-          output: [{ type: outputTypeMap[outputFormat] }], // Map outputFormat to the correct integer
-          period: periodMap[frequencyUnit],  // Ensure this is mapped to the correct integer
+          output: [{ type: outputTypeMap[outputFormat] }],
+          period: periodMap[frequencyUnit] // taskPeriod is only Hourly, Daily, Weekly, Monthly for now
 
           // dateRange is not implemented in BE yet
           // dateRange: {
           //   start: startDate,
           //   end: endDate
           // }
-
         };
 
-        const response = await axiosInstance.post(`http://localhost:8080/api/user/${user?.sub}/task`, taskDefinition);
+        const response = await http.post(`/user/${user?.sub}/task`, taskDefinition);
 
         if (response.status === 201) {
           toast.success(`Task created successfully!`);
@@ -332,9 +319,10 @@ const TaskCreation = () => {
               label="Frequency Unit"
               placeholder="Search or select a Unit"
               defaultItems={[
-                { label: "Mins", value: "Mins" },
-                { label: "Hours", value: "Hours" },
-                { label: "Days", value: "Days" }
+                { label: "Hourly", value: "Hourly" },
+                { label: "Daily", value: "Daily" },
+                { label: "Weekly", value: "Weekly" },
+                { label: "Monthly", value: "Monthly" }
               ]}
               onSelectionChange={(value) => setFrequencyUnit(value)}
             >

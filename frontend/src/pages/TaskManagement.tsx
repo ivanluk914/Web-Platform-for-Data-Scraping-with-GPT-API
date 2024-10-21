@@ -1,18 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Tooltip, Link } from "@nextui-org/react";
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useHttp } from '../providers/http-provider';
 import { useAuth0 } from '@auth0/auth0-react';
 import { MdOutlineDeleteForever } from "react-icons/md";
 import { GrView } from "react-icons/gr";
-
-interface Task {
-  id: string;
-  url: string;
-  dateCreated: string;
-  timeCreated: string;
-  status: 'ongoing' | 'completed' | 'cancelled';
-}
+import { Task, mapStatus, statusColorMap } from '../models/task';
 
 const columns = [
   { name: "URL", uid: "url" },
@@ -28,13 +21,14 @@ const TaskManagement: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const http = useHttp();
 
   // Fetch tasks from backend
   useEffect(() => {
     const fetchTasks = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get(`http://localhost:8080/api/user/${user?.sub}/task`);
+        const response = await http.get(`/user/${user?.sub}/task`);
         console.log('Fetched tasks:', response.data);
         const mappedTasks = response.data.map((task: any) => ({
           id: task.ID,
@@ -53,45 +47,20 @@ const TaskManagement: React.FC = () => {
       }
     };
     fetchTasks();
-  }, [user]);
-
-  const mapStatus = (status: number): 'ongoing' | 'running' | 'completed' | 'failed' | 'canceled' => {
-    switch (status) {
-      case 1:
-        return 'ongoing';
-      case 2:
-        return 'running';
-      case 3:
-        return 'completed';
-      case 4:
-        return 'failed';
-      case 5:
-        return 'canceled';
-      default:
-        return 'ongoing';
-    }
-  };
-
-  const statusColorMap: Record<Task['status'], "primary" | "success" | "danger" | "warning" | "default"> = {
-    ongoing: "default",
-    running: "primary",
-    completed: "success",
-    canceled: "danger",
-    failed: "warning"
-  };
+  }, [user, http]);
 
   const handleViewDetails = (taskId: string) => {
     navigate(`/home/tasks/${taskId}`);
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      await axios.delete(`/api/user/${user?.sub}/task/${taskId}`);
-      setTasks(tasks.filter(task => task.id !== taskId));
-    } catch (err) {
-      console.error('Error deleting task:', err);
-    }
-  };
+const handleDeleteTask = async (taskId: string) => {
+  try {
+    await http.delete(`/user/${user?.sub}/task/${taskId}`);
+    setTasks(tasks.filter(task => task.id !== taskId));
+  } catch (err) {
+    console.error('Error deleting task:', err);
+  }
+};
 
   const renderCell = useCallback((task: Task, columnKey: React.Key) => {
     const cellValue = task[columnKey as keyof Task];
