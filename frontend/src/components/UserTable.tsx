@@ -44,27 +44,22 @@ const UserTable = ({ page, pageSize, setPage, setPageSize }: UserTableProps) => 
     new Set(columns.map((col) => col.uid))
   );
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await axios.get(API_ENDPOINTS.LIST_USERS, {
-          params: {
-            page: page - 1,
-            pageSize,
-          },
-        });
-        setUsers(response.data.data);
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, [page, pageSize]);
+ useEffect(() => {
+   const fetchUsers = async () => {
+     setIsLoading(true);
+     setError(null);
+     try {
+       const response = await axios.get(API_ENDPOINTS.LIST_USERS);
+       setUsers(response.data.data);
+     } catch (err) {
+       setError(err as Error);
+     } finally {
+       setIsLoading(false);
+     }
+   };
+ 
+   fetchUsers();
+ }, []);
 
   const filteredItems = useMemo(() => {
     return users.filter((user) =>
