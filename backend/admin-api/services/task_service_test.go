@@ -217,54 +217,6 @@ func TestListTaskRuns(t *testing.T) {
 	})
 }
 
-// mockTaskDefinition generates a mock TaskDefinition for testing
-func mockTaskDefinition() models.TaskDefinition {
-	return models.TaskDefinition{
-		Type: models.TaskRunTypePreview,
-		Source: []models.UrlSource{
-			{
-				Type: models.SourceTypeUrl,
-				URL:  "https://example.com",
-			},
-		},
-		Target: []models.Target{
-			{
-				Type:  models.TargetTypeAuto,
-				Value: "auto-target",
-			},
-			{
-				Type:  models.TargetTypeXpath,
-				Name:  "xpath-target",
-				Value: "//div[@class='content']",
-			},
-		},
-		Output: []models.Output{
-			{
-				Type: models.OutputTypeJson,
-			},
-			{
-				Type:  models.OutputTypeGpt,
-				Value: "Summarize the content",
-			},
-		},
-		Period: models.TaskPeriodDaily,
-	}
-}
-
-// mockTaskDefinitionWithRandomPeriod generates a mock TaskDefinition with a random period
-func mockTaskDefinitionWithRandomPeriod() models.TaskDefinition {
-	task := mockTaskDefinition()
-	periods := []models.TaskPeriod{
-		models.TaskPeriodHourly,
-		models.TaskPeriodDaily,
-		models.TaskPeriodWeekly,
-		models.TaskPeriodMonthly,
-	}
-
-	task.Period = periods[rand.Int63n(int64(len(periods)))]
-	return task
-}
-
 func TestGetTaskRunArtifacts(t *testing.T) {
 	service, _, mr := setupTestService(t)
 	defer mr.Close()
@@ -365,6 +317,93 @@ func TestCreateTaskRunArtifact(t *testing.T) {
 
 		mockRepo.AssertExpectations(t)
 	})
+}
+
+func TestGetTaskRun(t *testing.T) {
+	service, db, mr := setupTestService(t)
+	defer mr.Close()
+	ctx := context.Background()
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		taskRun := models.TaskRun{
+			TaskID:            1,
+			Status:            models.TaskStatusComplete,
+			StartTime:         time.Now(),
+			EndTime:           time.Now().Add(time.Hour),
+			ErrorMessage:      "",
+			AirflowInstanceID: gocql.UUIDFromTime(time.Now()).String(),
+		}
+		require.NoError(t, db.Create(&taskRun).Error)
+
+		retrievedTaskRun, err := service.GetTaskRun(ctx, strconv.FormatUint(uint64(taskRun.ID), 10))
+		assert.NoError(t, err)
+		assert.NotNil(t, retrievedTaskRun)
+		assert.Equal(t, strconv.FormatUint(uint64(taskRun.TaskID), 10), retrievedTaskRun.TaskID)
+		assert.Equal(t, taskRun.Status, retrievedTaskRun.Status)
+	})
+
+	t.Run("TaskRun not found", func(t *testing.T) {
+		nonExistentID := "999"
+		retrievedTaskRun, err := service.GetTaskRun(ctx, nonExistentID)
+		assert.Error(t, err)
+		assert.Nil(t, retrievedTaskRun)
+	})
+
+	t.Run("Invalid TaskRun ID", func(t *testing.T) {
+		invalidID := "invalid"
+		retrievedTaskRun, err := service.GetTaskRun(ctx, invalidID)
+		assert.Error(t, err)
+		assert.Nil(t, retrievedTaskRun)
+		assert.Contains(t, err.Error(), "invalid syntax")
+	})
+}
+
+// mockTaskDefinition generates a mock TaskDefinition for testing
+func mockTaskDefinition() models.TaskDefinition {
+	return models.TaskDefinition{
+		Type: models.TaskRunTypePreview,
+		Source: []models.UrlSource{
+			{
+				Type: models.SourceTypeUrl,
+				URL:  "https://example.com",
+			},
+		},
+		Target: []models.Target{
+			{
+				Type:  models.TargetTypeAuto,
+				Value: "auto-target",
+			},
+			{
+				Type:  models.TargetTypeXpath,
+				Name:  "xpath-target",
+				Value: "//div[@class='content']",
+			},
+		},
+		Output: []models.Output{
+			{
+				Type: models.OutputTypeJson,
+			},
+			{
+				Type:  models.OutputTypeGpt,
+				Value: "Summarize the content",
+			},
+		},
+		Period: models.TaskPeriodDaily,
+	}
+}
+
+// mockTaskDefinitionWithRandomPeriod generates a mock TaskDefinition with a random period
+func mockTaskDefinitionWithRandomPeriod() models.TaskDefinition {
+	task := mockTaskDefinition()
+	periods := []models.TaskPeriod{
+		models.TaskPeriodHourly,
+		models.TaskPeriodDaily,
+		models.TaskPeriodWeekly,
+		models.TaskPeriodMonthly,
+	}
+
+	task.Period = periods[rand.Int63n(int64(len(periods)))]
+	return task
 }
 
 // MockTaskRunArtifactRepository is a mock implementation of the TaskRunArtifactRepository

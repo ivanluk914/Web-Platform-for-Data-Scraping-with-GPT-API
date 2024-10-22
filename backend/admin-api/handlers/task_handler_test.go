@@ -42,6 +42,11 @@ func (m *MockTaskService) UpdateTask(ctx context.Context, task models.Task, user
 	return args.Get(0).(*models.Task), args.Error(1)
 }
 
+func (m *MockTaskService) DeleteTask(ctx context.Context, taskID string) error {
+	args := m.Called(ctx, taskID)
+	return args.Error(0)
+}
+
 func (m *MockTaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*models.TaskRunDto, error) {
 	args := m.Called(ctx, taskID)
 	return args.Get(0).([]*models.TaskRunDto), args.Error(1)
@@ -57,14 +62,20 @@ func (m *MockTaskService) CreateTaskRun(ctx context.Context, taskRun models.Task
 	return args.Get(0).(*models.TaskRun), args.Error(1)
 }
 
-func (m *MockTaskService) UpdateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error) {
-	args := m.Called(ctx, taskRun)
+func (m *MockTaskService) UpdateTaskRun(ctx context.Context, taskRun models.TaskRun, taskRunID string) (*models.TaskRun, error) {
+	args := m.Called(ctx, taskRun, taskRunID)
 	return args.Get(0).(*models.TaskRun), args.Error(1)
 }
 
 func (m *MockTaskService) CreateTaskRunArtifact(ctx context.Context, artifact *models.CreateTaskRunArtifactDto) (*models.TaskRunArtifact, error) {
 	args := m.Called(ctx, artifact)
 	return args.Get(0).(*models.TaskRunArtifact), args.Error(1)
+}
+
+// Add this method to the MockTaskService
+func (m *MockTaskService) GetTaskRun(ctx context.Context, taskRunID string) (*models.TaskRunDto, error) {
+	args := m.Called(ctx, taskRunID)
+	return args.Get(0).(*models.TaskRunDto), args.Error(1)
 }
 
 func setupTestRouter() (*gin.Engine, *MockTaskService) {
@@ -295,7 +306,27 @@ func TestCreateTaskRun(t *testing.T) {
 		assert.Equal(t, taskRun, response)
 	})
 
-	// Add error case test
+	t.Run("Invalid JSON", func(t *testing.T) {
+		req, _ := http.NewRequest("POST", "/user/user1/task/1/run", bytes.NewBufferString("invalid json"))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Service error", func(t *testing.T) {
+		taskRun := models.TaskRun{TaskID: uint(1), Status: models.TaskStatusComplete}
+		mockService.On("CreateTaskRun", mock.Anything, taskRun).Return((*models.TaskRun)(nil), errors.New("service error")).Once()
+
+		taskRunJSON, _ := sonic.Marshal(taskRun)
+		req, _ := http.NewRequest("POST", "/user/user1/task/1/run", bytes.NewBuffer(taskRunJSON))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }
 
 func TestUpdateTaskRun(t *testing.T) {
@@ -318,7 +349,27 @@ func TestUpdateTaskRun(t *testing.T) {
 		assert.Equal(t, taskRun, response)
 	})
 
-	// Add error case test
+	t.Run("Invalid JSON", func(t *testing.T) {
+		req, _ := http.NewRequest("PUT", "/user/user1/task/1/run/1", bytes.NewBufferString("invalid json"))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Service error", func(t *testing.T) {
+		taskRun := models.TaskRun{TaskID: uint(1), Status: models.TaskStatusComplete}
+		mockService.On("UpdateTaskRun", mock.Anything, taskRun).Return((*models.TaskRun)(nil), errors.New("service error")).Once()
+
+		taskRunJSON, _ := sonic.Marshal(taskRun)
+		req, _ := http.NewRequest("PUT", "/user/user1/task/1/run/1", bytes.NewBuffer(taskRunJSON))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }
 
 func TestCreateTaskRunArtifact(t *testing.T) {
@@ -342,4 +393,85 @@ func TestCreateTaskRunArtifact(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, *createdArtifact, response)
 	})
+}
+
+func TestGetTaskRun(t *testing.T) {
+	r, mockService := setupTestRouter()
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		mockTaskRun := &models.TaskRunDto{TaskID: "task1"}
+		mockService.On("GetTaskRun", mock.Anything, "1").Return(mockTaskRun, nil).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user1/task/task1/run/1", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response models.TaskRunDto
+		err := sonic.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, mockTaskRun, &response)
+	})
+
+	t.Run("Error retrieval", func(t *testing.T) {
+		mockService.On("GetTaskRun", mock.Anything, "2").Return((*models.TaskRunDto)(nil), errors.New("task run not found")).Once()
+
+		req, _ := http.NewRequest("GET", "/user/user1/task/task1/run/2", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+func TestDeleteTask(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name           string
+		taskID         string
+		setupMock      func(*MockTaskService)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "Successful deletion",
+			taskID: "123",
+			setupMock: func(m *MockTaskService) {
+				m.On("DeleteTask", mock.Anything, "123").Return(nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   "",
+		},
+		{
+			name:   "Task not found",
+			taskID: "456",
+			setupMock: func(m *MockTaskService) {
+				m.On("DeleteTask", mock.Anything, "456").Return(errors.New("task not found"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   `{"error":"task not found"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockService := new(MockTaskService)
+			tt.setupMock(mockService)
+
+			handler := &TaskHandler{service: mockService}
+
+			router := gin.New()
+			router.DELETE("/user/:userId/task/:taskId", handler.DeleteTask)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("DELETE", "/user/123/task/"+tt.taskID, nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			assert.Equal(t, tt.expectedBody, w.Body.String())
+
+			mockService.AssertExpectations(t)
+		})
+	}
 }

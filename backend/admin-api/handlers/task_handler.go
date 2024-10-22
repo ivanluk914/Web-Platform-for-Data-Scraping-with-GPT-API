@@ -15,9 +15,11 @@ type TaskService interface {
 	GetTaskById(ctx context.Context, taskID string) (*models.TaskDto, error)
 	CreateTask(ctx context.Context, task models.Task, userID string) (*models.Task, error)
 	UpdateTask(ctx context.Context, task models.Task, userID string, taskID string) (*models.Task, error)
-	ListTaskRuns(ctx context.Context, taskRunID string) ([]*models.TaskRunDto, error)
+	DeleteTask(ctx context.Context, taskID string) error
+	ListTaskRuns(ctx context.Context, taskID string) ([]*models.TaskRunDto, error)
+	GetTaskRun(ctx context.Context, taskRunID string) (*models.TaskRunDto, error)
 	CreateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error)
-	UpdateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error)
+	UpdateTaskRun(ctx context.Context, taskRun models.TaskRun, taskRunID string) (*models.TaskRun, error)
 	GetTaskRunArtifacts(ctx context.Context, taskRunID string, page int, pageSize int) ([]*models.TaskRunArtifactDto, error)
 	CreateTaskRunArtifact(ctx context.Context, artifact *models.CreateTaskRunArtifactDto) (*models.TaskRunArtifact, error)
 }
@@ -35,8 +37,10 @@ func SetupTaskRoutes(r *gin.RouterGroup, service TaskService) {
 		userTasks.GET("/:taskId", handler.GetTask)
 		userTasks.POST("", handler.CreateTask)
 		userTasks.PUT("/:taskId", handler.UpdateTask)
+		userTasks.DELETE("/:taskId", handler.DeleteTask)
 		userTasks.GET("/:taskId/run", handler.ListTaskRuns)
 		userTasks.POST("/:taskId/run", handler.CreateTaskRun)
+		userTasks.GET("/:taskId/run/:runId", handler.GetTaskRun)
 		userTasks.PUT("/:taskId/run/:runId", handler.UpdateTaskRun)
 		userTasks.GET("/:taskId/run/:runId/artifact", handler.GetTaskRunArtifacts)
 		userTasks.POST("/:taskId/run/:runId/artifact", handler.CreateTaskRunArtifact)
@@ -95,6 +99,14 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	c.JSON(http.StatusOK, updatedTask)
 }
 
+func (h *TaskHandler) DeleteTask(c *gin.Context) {
+	err := h.service.DeleteTask(c.Request.Context(), c.Param("taskId"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+}
+
 func (h *TaskHandler) ListTaskRuns(c *gin.Context) {
 	taskRuns, err := h.service.ListTaskRuns(c.Request.Context(), c.Param("taskId"))
 	if err != nil {
@@ -103,6 +115,16 @@ func (h *TaskHandler) ListTaskRuns(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, taskRuns)
+}
+
+func (h *TaskHandler) GetTaskRun(c *gin.Context) {
+	taskRun, err := h.service.GetTaskRun(c.Request.Context(), c.Param("runId"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, taskRun)
 }
 
 func (h *TaskHandler) CreateTaskRun(c *gin.Context) {
@@ -128,7 +150,7 @@ func (h *TaskHandler) UpdateTaskRun(c *gin.Context) {
 		return
 	}
 
-	createdTaskRun, err := h.service.UpdateTaskRun(c.Request.Context(), taskRun)
+	createdTaskRun, err := h.service.UpdateTaskRun(c.Request.Context(), taskRun, c.Param("runId"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -39,29 +39,29 @@ type TaskRunDto struct {
 }
 
 type TaskRunArtifactDto struct {
-	AirflowInstanceID string
-	AirflowTaskID     string
-	ArtifactID        string
-	CreatedAt         time.Time
-	ArtifactType      string
-	URL               string
-	ContentType       string
-	ContentLength     int
-	StatusCode        int
-	AdditionalData    map[string]string
+	AirflowInstanceID string            `json:"airflow_instance_id"`
+	AirflowTaskID     string            `json:"airflow_task_id"`
+	ArtifactID        string            `json:"artifact_id"`
+	CreatedAt         time.Time         `json:"created_at"`
+	ArtifactType      string            `json:"artifact_type"`
+	URL               string            `json:"url"`
+	ContentType       string            `json:"content_type"`
+	ContentLength     int               `json:"content_length"`
+	StatusCode        int               `json:"status_code"`
+	AdditionalData    map[string]string `json:"additional_data"`
 }
 
 type CreateTaskRunArtifactDto struct {
-	AirflowInstanceID string
-	AirflowTaskID     string
-	ArtifactID        string
-	CreatedAt         time.Time
-	ArtifactType      string
-	URL               string
-	ContentType       string
-	ContentLength     int
-	StatusCode        int
-	AdditionalData    map[string]string
-	S3Bucket          string
-	S3Key             string
+	AirflowInstanceID string            `json:"airflow_instance_id"`
+	AirflowTaskID     string            `json:"airflow_task_id"`
+	ArtifactID        string            `json:"artifact_id"`
+	CreatedAt         time.Time         `json:"created_at"`
+	ArtifactType      string            `json:"artifact_type"`
+	URL               string            `json:"url"`
+	ContentType       string            `json:"content_type"`
+	ContentLength     int               `json:"content_length"`
+	StatusCode        int               `json:"status_code"`
+	AdditionalData    map[string]string `json:"additional_data"`
+	S3Bucket          string            `json:"s3_bucket"`
+	S3Key             string            `json:"s3_key"`
 }

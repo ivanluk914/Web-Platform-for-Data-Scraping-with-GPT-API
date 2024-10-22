@@ -29,7 +29,7 @@ func NewTaskService(logger *otelzap.Logger, taskRunMetadataRepository ArtifactRe
 }
 
 func (s *TaskService) GetTasksByUserId(ctx context.Context, userId string) ([]models.TaskDto, error) {
-	tasks, err := models.GetTasksByUserId(userId)
+	tasks, err := models.GetTasksByUserId(ctx, userId)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed find tasks", zap.Error(err))
 		return nil, err
@@ -63,7 +63,7 @@ func (s *TaskService) GetTaskById(ctx context.Context, taskID string) (*models.T
 		return j, nil
 	}
 
-	task, err := models.GetTaskById(taskIDUint)
+	task, err := models.GetTaskById(ctx, taskIDUint)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task from db", zap.Error(err))
 		return nil, err
@@ -90,7 +90,7 @@ func (s *TaskService) CreateTask(ctx context.Context, task models.Task, userID s
 		TaskName:       task.TaskName,
 	}
 
-	createdTask, err := models.CreateTask(createTask)
+	createdTask, err := models.CreateTask(ctx, createTask)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to create task", zap.Error(err))
 		return nil, err
@@ -106,7 +106,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, task models.Task, userID s
 		return nil, err
 	}
 
-	existingTask, err := models.GetTaskById(taskIDUint)
+	existingTask, err := models.GetTaskById(ctx, taskIDUint)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Ctx(ctx).Error("Task not found", zap.Uint64("task_id", taskIDUint))
@@ -120,13 +120,29 @@ func (s *TaskService) UpdateTask(ctx context.Context, task models.Task, userID s
 	existingTask.TaskName = task.TaskName
 	existingTask.UpdatedAt = time.Now()
 
-	updatedTask, err := models.UpdateTask(*existingTask)
+	updatedTask, err := models.UpdateTask(ctx, *existingTask)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to update task", zap.Error(err))
 		return nil, err
 	}
 
 	return updatedTask, nil
+}
+
+func (s *TaskService) DeleteTask(ctx context.Context, taskID string) error {
+	taskIDUint, err := strconv.ParseUint(taskID, 10, 64)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to parse task id", zap.Error(err))
+		return err
+	}
+
+	err = models.DeleteTask(ctx, taskIDUint)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to delete task", zap.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 func (s *TaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*models.TaskRunDto, error) {
@@ -136,7 +152,7 @@ func (s *TaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*model
 		return nil, err
 	}
 
-	taskRuns, err := models.ListRunsForTask(taskIDUint)
+	taskRuns, err := models.ListRunsForTask(ctx, taskIDUint)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task runs", zap.Error(err))
 		return nil, err
@@ -150,8 +166,26 @@ func (s *TaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*model
 	return taskRunsDto, nil
 }
 
+func (s *TaskService) GetTaskRun(ctx context.Context, taskRunID string) (*models.TaskRunDto, error) {
+	taskRunIDUint, err := strconv.ParseUint(taskRunID, 10, 64)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to parse task id", zap.Error(err))
+		return nil, err
+	}
+
+	taskRun, err := models.GetTaskRun(ctx, taskRunIDUint)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error while getting task runs", zap.Error(err))
+		return nil, err
+	}
+
+	taskRunDto := s.MapTaskRunToDto(ctx, taskRun)
+
+	return taskRunDto, nil
+}
+
 func (s *TaskService) CreateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error) {
-	createdTaskRun, err := models.CreateTaskRun(taskRun)
+	createdTaskRun, err := models.CreateTaskRun(ctx, taskRun)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while creating task run", zap.Error(err))
 		return nil, err
@@ -160,8 +194,14 @@ func (s *TaskService) CreateTaskRun(ctx context.Context, taskRun models.TaskRun)
 	return createdTaskRun, nil
 }
 
-func (s *TaskService) UpdateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error) {
-	updatedTaskRun, err := models.UpdateTaskRun(taskRun)
+func (s *TaskService) UpdateTaskRun(ctx context.Context, taskRun models.TaskRun, taskRunID string) (*models.TaskRun, error) {
+	taskRunIDUint, err := strconv.ParseUint(taskRunID, 10, 64)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to parse task id", zap.Error(err))
+		return nil, err
+	}
+
+	updatedTaskRun, err := models.UpdateTaskRun(ctx, taskRun, taskRunIDUint)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while creating task run", zap.Error(err))
 		return nil, err
@@ -177,7 +217,7 @@ func (s *TaskService) GetTaskRunArtifacts(ctx context.Context, taskRunID string,
 		return nil, err
 	}
 
-	taskRun, err := models.GetTaskRun(taskRunIDUint)
+	taskRun, err := models.GetTaskRun(ctx, taskRunIDUint)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task runs", zap.Error(err))
 		return nil, err
@@ -221,7 +261,7 @@ func (s *TaskService) CreateTaskRunArtifact(ctx context.Context, artifact *model
 }
 
 func (s *TaskService) MapTaskToDto(ctx context.Context, task *models.Task) (*models.TaskDto, error) {
-	taskRun, err := models.GetLatestRunForTask(uint64(task.ID))
+	taskRun, err := models.GetLatestRunForTask(ctx, uint64(task.ID))
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task run from db", zap.Error(err))
 		return nil, err

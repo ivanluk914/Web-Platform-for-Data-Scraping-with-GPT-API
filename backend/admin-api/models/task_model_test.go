@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"testing"
 
 	"github.com/bytedance/sonic"
@@ -37,7 +38,7 @@ func TestGetTasksByUserId(t *testing.T) {
 	}
 
 	t.Run("Get tasks for existing user", func(t *testing.T) {
-		tasks, err := GetTasksByUserId("user1")
+		tasks, err := GetTasksByUserId(context.Background(), "user1")
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 2)
 		assert.Equal(t, "task1", tasks[0].AirflowTaskId)
@@ -45,7 +46,7 @@ func TestGetTasksByUserId(t *testing.T) {
 	})
 
 	t.Run("Get tasks for non-existing user", func(t *testing.T) {
-		tasks, err := GetTasksByUserId("user3")
+		tasks, err := GetTasksByUserId(context.Background(), "user3")
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 0)
 	})
@@ -81,7 +82,7 @@ func TestGetTaskById(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Get existing task", func(t *testing.T) {
-		task, err := GetTaskById(uint64(testTask.ID))
+		task, err := GetTaskById(context.Background(), uint64(testTask.ID))
 		assert.NoError(t, err)
 		assert.Equal(t, testTask.ID, task.ID)
 		assert.Equal(t, testTask.Owner, task.Owner)
@@ -91,7 +92,7 @@ func TestGetTaskById(t *testing.T) {
 	})
 
 	t.Run("Get non-existing task", func(t *testing.T) {
-		task, err := GetTaskById(9999)
+		task, err := GetTaskById(context.Background(), 9999)
 		assert.Error(t, err)
 		assert.Nil(t, task)
 	})
@@ -123,7 +124,7 @@ func TestCreateTask(t *testing.T) {
 		TaskDefinition: taskDefJSON,
 		AirflowTaskId:  "task1",
 	}
-	createdTaskResult, err := CreateTask(task)
+	createdTaskResult, err := CreateTask(context.Background(), task)
 	assert.NoError(t, err)
 	assert.NotNil(t, createdTaskResult)
 
@@ -174,7 +175,7 @@ func TestUpdateTask(t *testing.T) {
 	require.NoError(t, err)
 	task.TaskDefinition = taskDefJSON
 
-	updatedTaskResult, err := UpdateTask(task)
+	updatedTaskResult, err := UpdateTask(context.Background(), task)
 	assert.NoError(t, err)
 	assert.NotNil(t, updatedTaskResult)
 
