@@ -3,14 +3,18 @@ package services
 import (
 	"admin-api/models"
 	"context"
+	"errors"
 	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/bytedance/sonic"
+	"github.com/gocql/gocql"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
@@ -213,6 +217,147 @@ func TestListTaskRuns(t *testing.T) {
 	})
 }
 
+func TestGetTaskRunArtifacts(t *testing.T) {
+	service, _, mr := setupTestService(t)
+	defer mr.Close()
+	ctx := context.Background()
+
+	mockRepo := &MockTaskRunArtifactRepository{}
+	service.taskRunArtifactRepository = mockRepo
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		taskRun := models.TaskRun{
+			TaskID:            1,
+			AirflowInstanceID: gocql.UUIDFromTime(time.Now()).String(),
+			Status:            models.TaskStatusComplete,
+			StartTime:         time.Now(),
+			EndTime:           time.Now().Add(time.Hour),
+			ErrorMessage:      "",
+		}
+
+		page := 1
+		pageSize := 10
+		expectedArtifacts := []*models.TaskRunArtifact{
+			{AirflowInstanceID: gocql.UUIDFromTime(time.Now()), ArtifactID: gocql.UUIDFromTime(time.Now())},
+			{AirflowInstanceID: gocql.UUIDFromTime(time.Now()), ArtifactID: gocql.UUIDFromTime(time.Now())},
+		}
+		mockRepo.On("ListArtifactsByTaskRunID", mock.Anything, pageSize, (page-1)*pageSize).Return(expectedArtifacts, nil)
+
+		createdTaskRun, err1 := service.CreateTaskRun(ctx, taskRun)
+
+		artifacts, err2 := service.GetTaskRunArtifacts(ctx, strconv.FormatUint(uint64(createdTaskRun.ID), 10), page, pageSize)
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Len(t, artifacts, 2)
+		assert.Equal(t, expectedArtifacts[0].ArtifactID.String(), artifacts[0].ArtifactID)
+		assert.Equal(t, expectedArtifacts[1].ArtifactID.String(), artifacts[1].ArtifactID)
+
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Error retrieval", func(t *testing.T) {
+		taskRunID := "456"
+		page := 1
+		pageSize := 10
+
+		mockRepo.On("ListArtifactsByTaskRunID", mock.Anything, pageSize, (page-1)*pageSize).Return(nil, errors.New("database error"))
+
+		artifacts, err := service.GetTaskRunArtifacts(ctx, taskRunID, page, pageSize)
+		assert.Error(t, err)
+		assert.Nil(t, artifacts)
+
+		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestCreateTaskRunArtifact(t *testing.T) {
+	service, _, mr := setupTestService(t)
+	defer mr.Close()
+	ctx := context.Background()
+
+	mockRepo := &MockTaskRunArtifactRepository{}
+	service.taskRunArtifactRepository = mockRepo
+
+	t.Run("Successful creation", func(t *testing.T) {
+		artifact := &models.CreateTaskRunArtifactDto{
+			AirflowInstanceID: gocql.UUIDFromTime(time.Now()).String(),
+			AirflowTaskID:     gocql.UUIDFromTime(time.Now()).String(),
+			ArtifactID:        gocql.UUIDFromTime(time.Now()).String(),
+			CreatedAt:         time.Now(),
+			ArtifactType:      "output",
+			URL:               "https://example.com/artifact",
+		}
+
+		mockRepo.On("InsertArtifact", mock.AnythingOfType("*models.TaskRunArtifact")).Return(nil)
+
+		createdArtifact, err := service.CreateTaskRunArtifact(ctx, artifact)
+		assert.NoError(t, err)
+		assert.NotNil(t, createdArtifact)
+		assert.Equal(t, artifact.AirflowInstanceID, createdArtifact.AirflowInstanceID.String())
+		assert.Equal(t, artifact.AirflowTaskID, createdArtifact.AirflowTaskID.String())
+		assert.Equal(t, artifact.ArtifactType, createdArtifact.ArtifactType)
+		assert.Equal(t, artifact.URL, createdArtifact.URL)
+
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Error creation", func(t *testing.T) {
+		artifact := &models.CreateTaskRunArtifactDto{
+			AirflowInstanceID: "instance2",
+			AirflowTaskID:     "task2",
+			ArtifactType:      "log",
+			URL:               "https://example.com/log",
+		}
+
+		mockRepo.On("InsertArtifact", mock.AnythingOfType("*models.TaskRunArtifact")).Return(errors.New("database error"))
+
+		createdArtifact, err := service.CreateTaskRunArtifact(ctx, artifact)
+		assert.Error(t, err)
+		assert.Nil(t, createdArtifact)
+
+		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestGetTaskRun(t *testing.T) {
+	service, db, mr := setupTestService(t)
+	defer mr.Close()
+	ctx := context.Background()
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		taskRun := models.TaskRun{
+			TaskID:            1,
+			Status:            models.TaskStatusComplete,
+			StartTime:         time.Now(),
+			EndTime:           time.Now().Add(time.Hour),
+			ErrorMessage:      "",
+			AirflowInstanceID: gocql.UUIDFromTime(time.Now()).String(),
+		}
+		require.NoError(t, db.Create(&taskRun).Error)
+
+		retrievedTaskRun, err := service.GetTaskRun(ctx, strconv.FormatUint(uint64(taskRun.ID), 10))
+		assert.NoError(t, err)
+		assert.NotNil(t, retrievedTaskRun)
+		assert.Equal(t, strconv.FormatUint(uint64(taskRun.TaskID), 10), retrievedTaskRun.TaskID)
+		assert.Equal(t, taskRun.Status, retrievedTaskRun.Status)
+	})
+
+	t.Run("TaskRun not found", func(t *testing.T) {
+		nonExistentID := "999"
+		retrievedTaskRun, err := service.GetTaskRun(ctx, nonExistentID)
+		assert.Error(t, err)
+		assert.Nil(t, retrievedTaskRun)
+	})
+
+	t.Run("Invalid TaskRun ID", func(t *testing.T) {
+		invalidID := "invalid"
+		retrievedTaskRun, err := service.GetTaskRun(ctx, invalidID)
+		assert.Error(t, err)
+		assert.Nil(t, retrievedTaskRun)
+		assert.Contains(t, err.Error(), "invalid syntax")
+	})
+}
+
 // mockTaskDefinition generates a mock TaskDefinition for testing
 func mockTaskDefinition() models.TaskDefinition {
 	return models.TaskDefinition{
@@ -256,6 +401,22 @@ func mockTaskDefinitionWithRandomPeriod() models.TaskDefinition {
 		models.TaskPeriodWeekly,
 		models.TaskPeriodMonthly,
 	}
-	task.Period = periods[rand.Intn(len(periods))]
+
+	task.Period = periods[rand.Int63n(int64(len(periods)))]
 	return task
+}
+
+// MockTaskRunArtifactRepository is a mock implementation of the TaskRunArtifactRepository
+type MockTaskRunArtifactRepository struct {
+	mock.Mock
+}
+
+func (m *MockTaskRunArtifactRepository) ListArtifactsByTaskRunID(airflowInstanceID gocql.UUID, limit int, offset int) ([]*models.TaskRunArtifact, error) {
+	args := m.Called(airflowInstanceID, limit, offset)
+	return args.Get(0).([]*models.TaskRunArtifact), args.Error(1)
+}
+
+func (m *MockTaskRunArtifactRepository) InsertArtifact(artifact *models.TaskRunArtifact) error {
+	args := m.Called(artifact)
+	return args.Error(0)
 }

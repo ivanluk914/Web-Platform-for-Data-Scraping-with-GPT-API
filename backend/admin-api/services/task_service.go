@@ -14,17 +14,22 @@ import (
 	"gorm.io/gorm"
 )
 
-type TaskService struct {
-	logger                    *otelzap.Logger
-	taskRunArtifactRepository *models.TaskRunArtifactRepository
+type ArtifactRepository interface {
+	InsertArtifact(artifact *models.TaskRunArtifact) error
+	ListArtifactsByTaskRunID(airflowInstanceId gocql.UUID, limit int, offset int) ([]*models.TaskRunArtifact, error)
 }
 
-func NewTaskService(logger *otelzap.Logger, taskRunMetadataRepository *models.TaskRunArtifactRepository) *TaskService {
+type TaskService struct {
+	logger                    *otelzap.Logger
+	taskRunArtifactRepository ArtifactRepository
+}
+
+func NewTaskService(logger *otelzap.Logger, taskRunMetadataRepository ArtifactRepository) *TaskService {
 	return &TaskService{logger: logger, taskRunArtifactRepository: taskRunMetadataRepository}
 }
 
 func (s *TaskService) GetTasksByUserId(ctx context.Context, userId string) ([]models.TaskDto, error) {
-	tasks, err := models.GetTasksByUserId(userId)
+	tasks, err := models.GetTasksByUserId(ctx, userId)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed find tasks", zap.Error(err))
 		return nil, err
@@ -58,7 +63,7 @@ func (s *TaskService) GetTaskById(ctx context.Context, taskID string) (*models.T
 		return j, nil
 	}
 
-	task, err := models.GetTaskById(taskIDUint)
+	task, err := models.GetTaskById(ctx, taskIDUint)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task from db", zap.Error(err))
 		return nil, err
@@ -85,12 +90,13 @@ func (s *TaskService) CreateTask(ctx context.Context, task models.Task, userID s
 		TaskName:       task.TaskName,
 	}
 
-	if err := models.CreateTask(createTask); err != nil {
+	createdTask, err := models.CreateTask(ctx, createTask)
+	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to create task", zap.Error(err))
 		return nil, err
 	}
 
-	return &task, nil
+	return createdTask, nil
 }
 
 func (s *TaskService) UpdateTask(ctx context.Context, task models.Task, userID string, taskID string) (*models.Task, error) {
@@ -100,7 +106,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, task models.Task, userID s
 		return nil, err
 	}
 
-	existingTask, err := models.GetTaskById(taskIDUint)
+	existingTask, err := models.GetTaskById(ctx, taskIDUint)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Ctx(ctx).Error("Task not found", zap.Uint64("task_id", taskIDUint))
@@ -114,12 +120,29 @@ func (s *TaskService) UpdateTask(ctx context.Context, task models.Task, userID s
 	existingTask.TaskName = task.TaskName
 	existingTask.UpdatedAt = time.Now()
 
-	if err := models.UpdateTask(*existingTask); err != nil {
+	updatedTask, err := models.UpdateTask(ctx, *existingTask)
+	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to update task", zap.Error(err))
 		return nil, err
 	}
 
-	return existingTask, nil
+	return updatedTask, nil
+}
+
+func (s *TaskService) DeleteTask(ctx context.Context, taskID string) error {
+	taskIDUint, err := strconv.ParseUint(taskID, 10, 64)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to parse task id", zap.Error(err))
+		return err
+	}
+
+	err = models.DeleteTask(ctx, taskIDUint)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to delete task", zap.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 func (s *TaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*models.TaskRunDto, error) {
@@ -129,7 +152,7 @@ func (s *TaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*model
 		return nil, err
 	}
 
-	taskRuns, err := models.ListRunsForTask(taskIDUint)
+	taskRuns, err := models.ListRunsForTask(ctx, taskIDUint)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task runs", zap.Error(err))
 		return nil, err
@@ -143,6 +166,50 @@ func (s *TaskService) ListTaskRuns(ctx context.Context, taskID string) ([]*model
 	return taskRunsDto, nil
 }
 
+func (s *TaskService) GetTaskRun(ctx context.Context, taskRunID string) (*models.TaskRunDto, error) {
+	taskRunIDUint, err := strconv.ParseUint(taskRunID, 10, 64)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to parse task id", zap.Error(err))
+		return nil, err
+	}
+
+	taskRun, err := models.GetTaskRun(ctx, taskRunIDUint)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error while getting task runs", zap.Error(err))
+		return nil, err
+	}
+
+	taskRunDto := s.MapTaskRunToDto(ctx, taskRun)
+
+	return taskRunDto, nil
+}
+
+func (s *TaskService) CreateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error) {
+	createdTaskRun, err := models.CreateTaskRun(ctx, taskRun)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error while creating task run", zap.Error(err))
+		return nil, err
+	}
+
+	return createdTaskRun, nil
+}
+
+func (s *TaskService) UpdateTaskRun(ctx context.Context, taskRun models.TaskRun, taskRunID string) (*models.TaskRun, error) {
+	taskRunIDUint, err := strconv.ParseUint(taskRunID, 10, 64)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to parse task id", zap.Error(err))
+		return nil, err
+	}
+
+	updatedTaskRun, err := models.UpdateTaskRun(ctx, taskRun, taskRunIDUint)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error while creating task run", zap.Error(err))
+		return nil, err
+	}
+
+	return updatedTaskRun, nil
+}
+
 func (s *TaskService) GetTaskRunArtifacts(ctx context.Context, taskRunID string, page int, pageSize int) ([]*models.TaskRunArtifactDto, error) {
 	taskRunIDUint, err := strconv.ParseUint(taskRunID, 10, 64)
 	if err != nil {
@@ -150,7 +217,7 @@ func (s *TaskService) GetTaskRunArtifacts(ctx context.Context, taskRunID string,
 		return nil, err
 	}
 
-	taskRun, err := models.GetTaskRun(taskRunIDUint)
+	taskRun, err := models.GetTaskRun(ctx, taskRunIDUint)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task runs", zap.Error(err))
 		return nil, err
@@ -178,8 +245,23 @@ func (s *TaskService) GetTaskRunArtifacts(ctx context.Context, taskRunID string,
 	return artifactsDto, nil
 }
 
+func (s *TaskService) CreateTaskRunArtifact(ctx context.Context, artifact *models.CreateTaskRunArtifactDto) (*models.TaskRunArtifact, error) {
+	taskRunArtifact, err := s.MapDtoToTaskRunArtifact(ctx, artifact)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error while mapping task run artifact to dto", zap.Error(err))
+		return nil, err
+	}
+
+	if err := s.taskRunArtifactRepository.InsertArtifact(taskRunArtifact); err != nil {
+		s.logger.Ctx(ctx).Error("Error while inserting task run artifact", zap.Error(err))
+		return nil, err
+	}
+
+	return taskRunArtifact, nil
+}
+
 func (s *TaskService) MapTaskToDto(ctx context.Context, task *models.Task) (*models.TaskDto, error) {
-	taskRun, err := models.GetLatestRunForTask(uint64(task.ID))
+	taskRun, err := models.GetLatestRunForTask(ctx, uint64(task.ID))
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while getting task run from db", zap.Error(err))
 		return nil, err
@@ -229,4 +311,36 @@ func (s *TaskService) MapTaskRunArtifactToDto(ctx context.Context, artifact *mod
 		AdditionalData:    artifact.AdditionalData,
 	}
 	return taskRunArtifactDto
+}
+
+func (s *TaskService) MapDtoToTaskRunArtifact(ctx context.Context, artifact *models.CreateTaskRunArtifactDto) (*models.TaskRunArtifact, error) {
+	airflowInstanceID, err := gocql.ParseUUID(artifact.AirflowInstanceID)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error parsing AirflowInstanceID to UUID", zap.Error(err))
+		return nil, err
+	}
+	airflowTaskID, err := gocql.ParseUUID(artifact.AirflowTaskID)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error parsing AirflowTaskID to UUID", zap.Error(err))
+		return nil, err
+	}
+	artifactID, err := gocql.ParseUUID(artifact.ArtifactID)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Error parsing ArtifactID to UUID", zap.Error(err))
+		return nil, err
+	}
+
+	taskRunArtifact := &models.TaskRunArtifact{
+		AirflowInstanceID: airflowInstanceID,
+		AirflowTaskID:     airflowTaskID,
+		ArtifactID:        artifactID,
+		CreatedAt:         artifact.CreatedAt,
+		ArtifactType:      artifact.ArtifactType,
+		URL:               artifact.URL,
+		ContentType:       artifact.ContentType,
+		ContentLength:     artifact.ContentLength,
+		StatusCode:        artifact.StatusCode,
+		AdditionalData:    artifact.AdditionalData,
+	}
+	return taskRunArtifact, nil
 }

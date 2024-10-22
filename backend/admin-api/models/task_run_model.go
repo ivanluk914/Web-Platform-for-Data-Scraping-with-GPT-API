@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -62,18 +63,18 @@ type TaskRun struct {
 	ErrorMessage      string     `json:"error_message"`
 }
 
-func ListRunsForTask(taskUid uint64) ([]TaskRun, error) {
+func ListRunsForTask(ctx context.Context, taskUid uint64) ([]TaskRun, error) {
 	var taskRuns []TaskRun
-	result := db.Where("task_id = ?", taskUid).Find(&taskRuns)
+	result := db.WithContext(ctx).Where("task_id = ?", taskUid).Find(&taskRuns)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return taskRuns, nil
 }
 
-func GetTaskRun(uid uint64) (*TaskRun, error) {
+func GetTaskRun(ctx context.Context, uid uint64) (*TaskRun, error) {
 	var run *TaskRun
-	result := db.Where("id = ?", uid).First(&run)
+	result := db.WithContext(ctx).Where("id = ?", uid).First(&run)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("task not found")
@@ -83,9 +84,9 @@ func GetTaskRun(uid uint64) (*TaskRun, error) {
 	return run, nil
 }
 
-func GetLatestRunForTask(uid uint64) (*TaskRun, error) {
+func GetLatestRunForTask(ctx context.Context, uid uint64) (*TaskRun, error) {
 	var run *TaskRun
-	result := db.Order("created_at desc").Where("task_id = ?", uid).First(&run)
+	result := db.WithContext(ctx).Order("created_at desc").Where("task_id = ?", uid).First(&run)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -95,18 +96,21 @@ func GetLatestRunForTask(uid uint64) (*TaskRun, error) {
 	return run, nil
 }
 
-func CreateTaskRun(taskRun TaskRun) error {
-	result := db.Create(&taskRun)
+func CreateTaskRun(ctx context.Context, taskRun TaskRun) (*TaskRun, error) {
+	result := db.WithContext(ctx).Create(&taskRun)
 	if result.Error != nil {
-		return result.Error
+		return &taskRun, result.Error
 	}
-	return nil
+	return &taskRun, nil
 }
 
-func UpdateTaskRun(taskRun TaskRun) error {
-	result := db.Model(&taskRun).Updates(taskRun)
+func UpdateTaskRun(ctx context.Context, taskRun TaskRun, taskRunID uint64) (*TaskRun, error) {
+	result := db.WithContext(ctx).Model(&TaskRun{}).Where("id = ?", taskRunID).Updates(taskRun)
 	if result.Error != nil {
-		return result.Error
+		return &taskRun, result.Error
 	}
-	return nil
+	if result.RowsAffected == 0 {
+		return nil, errors.New("no task run found with the given ID")
+	}
+	return &taskRun, nil
 }

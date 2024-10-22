@@ -13,10 +13,19 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 )
 
-const (
-	Auth0UserRole   = "user"
-	Auth0MemberRole = "member"
-	Auth0AdminRole  = "admin"
+var (
+	Auth0AdminRole = &management.Role{
+		ID:   auth0.String("rol_9wVRSPWcCNB3AypM"),
+		Name: auth0.String("Admin"),
+	}
+	Auth0MemberRole = &management.Role{
+		ID:   auth0.String("rol_ojPUsNcwlWeofPmS"),
+		Name: auth0.String("Member"),
+	}
+	Auth0UserRole = &management.Role{
+		ID:   auth0.String("rol_wgtsNMZVvH6xhrnu"),
+		Name: auth0.String("User"),
+	}
 )
 
 type authClient struct {
@@ -160,11 +169,11 @@ func (c *authClient) RemoveUserRole(ctx context.Context, userID string, role mod
 func mapUserRoleToAuth0Role(role models.UserRole) *management.Role {
 	switch role {
 	case models.UserRoleUser:
-		return &management.Role{Name: auth0.String(Auth0UserRole)}
+		return Auth0UserRole
 	case models.UserRoleMember:
-		return &management.Role{Name: auth0.String(Auth0MemberRole)}
+		return Auth0MemberRole
 	case models.UserRoleAdmin:
-		return &management.Role{Name: auth0.String(Auth0AdminRole)}
+		return Auth0AdminRole
 	default:
 		return nil
 	}
@@ -172,11 +181,11 @@ func mapUserRoleToAuth0Role(role models.UserRole) *management.Role {
 
 func mapAuth0RoleToUserRole(role *management.Role) models.UserRole {
 	switch role.GetID() {
-	case Auth0UserRole:
+	case Auth0UserRole.GetID():
 		return models.UserRoleUser
-	case Auth0MemberRole:
+	case Auth0MemberRole.GetID():
 		return models.UserRoleMember
-	case Auth0AdminRole:
+	case Auth0AdminRole.GetID():
 		return models.UserRoleAdmin
 	default:
 		return models.UserRoleUnknown

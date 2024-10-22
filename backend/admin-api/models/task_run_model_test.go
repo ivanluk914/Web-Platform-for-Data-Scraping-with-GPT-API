@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -37,7 +38,7 @@ func TestListRunsForTask(t *testing.T) {
 	}
 
 	t.Run("List runs for existing task", func(t *testing.T) {
-		runs, err := ListRunsForTask(1)
+		runs, err := ListRunsForTask(context.Background(), 1)
 		assert.NoError(t, err)
 		assert.Len(t, runs, 2)
 		assert.Equal(t, TaskStatusCreated, runs[0].Status)
@@ -45,7 +46,7 @@ func TestListRunsForTask(t *testing.T) {
 	})
 
 	t.Run("List runs for non-existing task", func(t *testing.T) {
-		runs, err := ListRunsForTask(999)
+		runs, err := ListRunsForTask(context.Background(), 999)
 		assert.NoError(t, err)
 		assert.Len(t, runs, 0)
 	})
@@ -67,7 +68,7 @@ func TestGetTaskRun(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Get existing task run", func(t *testing.T) {
-		run, err := GetTaskRun(uint64(testRun.ID))
+		run, err := GetTaskRun(context.Background(), uint64(testRun.ID))
 		assert.NoError(t, err)
 		assert.NotNil(t, run)
 		assert.Equal(t, testRun.TaskID, run.TaskID)
@@ -76,7 +77,7 @@ func TestGetTaskRun(t *testing.T) {
 	})
 
 	t.Run("Get non-existing task run", func(t *testing.T) {
-		run, err := GetTaskRun(999)
+		run, err := GetTaskRun(context.Background(), 999)
 		assert.Error(t, err)
 		assert.Nil(t, run)
 		assert.Contains(t, err.Error(), "task not found")
@@ -99,14 +100,14 @@ func TestGetLatestRunForTask(t *testing.T) {
 	}
 
 	t.Run("Get latest run for existing task", func(t *testing.T) {
-		run, err := GetLatestRunForTask(1)
+		run, err := GetLatestRunForTask(context.Background(), 1)
 		assert.NoError(t, err)
 		assert.NotNil(t, run)
 		assert.Equal(t, TaskStatusRunning, run.Status)
 	})
 
 	t.Run("Get latest run for non-existing task", func(t *testing.T) {
-		run, err := GetLatestRunForTask(999)
+		run, err := GetLatestRunForTask(context.Background(), 999)
 		assert.NoError(t, err)
 		assert.Nil(t, run)
 	})
@@ -125,8 +126,9 @@ func TestCreateTaskRun(t *testing.T) {
 		ErrorMessage:      "",
 	}
 
-	err := CreateTaskRun(taskRun)
+	createdTaskRun, err := CreateTaskRun(context.Background(), taskRun)
 	assert.NoError(t, err)
+	assert.NotNil(t, createdTaskRun)
 
 	// Verify the task run was created
 	var createdRun TaskRun
@@ -158,8 +160,9 @@ func TestUpdateTaskRun(t *testing.T) {
 	taskRun.EndTime = time.Now().Add(2 * time.Hour)
 	taskRun.ErrorMessage = "Completed successfully"
 
-	err = UpdateTaskRun(taskRun)
+	updatedTaskRun, err := UpdateTaskRun(context.Background(), taskRun, uint64(taskRun.ID))
 	assert.NoError(t, err)
+	assert.NotNil(t, updatedTaskRun)
 
 	// Verify the task run was updated
 	var updatedRun TaskRun

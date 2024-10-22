@@ -1,7 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 
 	"gorm.io/gorm"
 )
@@ -118,34 +120,45 @@ type Task struct {
 	AirflowTaskId  string          `json:"airflow_task_id"`
 }
 
-func GetTasksByUserId(uid string) ([]Task, error) {
+func GetTasksByUserId(ctx context.Context, uid string) ([]Task, error) {
 	var tasks []Task
-	result := db.Where("owner = ?", uid).Find(&tasks)
+	result := db.WithContext(ctx).Where("owner = ?", uid).Find(&tasks)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return tasks, nil
 }
 
-func GetTaskById(jid uint64) (*Task, error) {
+func GetTaskById(ctx context.Context, jid uint64) (*Task, error) {
 	var task *Task
-	result := db.Where("id = ?", jid).First(&task)
+	result := db.WithContext(ctx).Where("id = ?", jid).First(&task)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return task, nil
 }
 
-func CreateTask(task Task) error {
-	result := db.Create(&task)
+func CreateTask(ctx context.Context, task Task) (*Task, error) {
+	result := db.WithContext(ctx).Create(&task)
 	if result.Error != nil {
-		return result.Error
+		return nil, result.Error
 	}
-	return nil
+	return &task, nil
 }
 
-func UpdateTask(task Task) error {
-	result := db.Model(&task).Updates(task)
+func UpdateTask(ctx context.Context, task Task) (*Task, error) {
+	result := db.WithContext(ctx).Model(&Task{}).Where("id = ?", task.ID).Updates(task)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, errors.New("no task found with the given ID")
+	}
+	return &task, nil
+}
+
+func DeleteTask(ctx context.Context, taskID uint64) error {
+	result := db.WithContext(ctx).Delete(&Task{}, taskID)
 	if result.Error != nil {
 		return result.Error
 	}
