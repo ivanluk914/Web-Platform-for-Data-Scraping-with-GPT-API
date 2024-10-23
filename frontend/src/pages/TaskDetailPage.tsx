@@ -38,22 +38,32 @@ const TaskDetailPage: React.FC = () => {
       try {
         setIsLoading(true);
         const response = await http.get(`/user/${user?.sub}/task/${taskId}`);
+        console.log("testtest",`/user/${user?.sub}/task/${taskId}`)
         console.log('Fetched task:', response.data);
+
+
+        console.log("response.data:",response.data)
+
         const mappedTask: MappedTask = {
-          id: response.data.ID,
-          url: response.data.task_definition.source[0].url,
-          dateCreated: new Date(response.data.CreatedAt).toLocaleDateString(),
-          timeCreated: new Date(response.data.CreatedAt).toLocaleTimeString(),
-          status: mapStatus(response.data.status),
-          dateCanceled: response.data.CanceledAt ? new Date(response.data.CanceledAt).toLocaleDateString() : undefined,
-          timeCanceled: response.data.CanceledAt ? new Date(response.data.CanceledAt).toLocaleTimeString() : undefined,
+          id: response.data.id, 
+          //  JSON task_definition 
+          url: JSON.parse(response.data.task_definition).source[0].url, 
+          dateCreated: new Date(response.data.created_at).toLocaleDateString(), 
+          timeCreated: new Date(response.data.created_at).toLocaleTimeString(), 
+          status: mapStatus(response.data.status), // use status
+
+          dateCanceled: response.data.canceled_at ? new Date(response.data.canceled_at).toLocaleDateString() : undefined,
+          timeCanceled: response.data.canceled_at ? new Date(response.data.canceled_at).toLocaleTimeString() : undefined,
+
           taskDefinition: {
-            source: response.data.task_definition.source,
-            output: response.data.task_definition.output,
-            target: response.data.task_definition.target,
-            period: response.data.task_definition.period,
+            source: JSON.parse(response.data.task_definition).source, // 解析 task_definition 后访问 source
+            output: JSON.parse(response.data.task_definition).output, // 解析 task_definition 后访问 output
+            target: JSON.parse(response.data.task_definition).target, // 解析 task_definition 后访问 target
+            period: JSON.parse(response.data.task_definition).period, // 解析 task_definition 后访问 period
           },
         };
+
+console.log("Mapped Task:", mappedTask);
         setTask(mappedTask);
         setError(null);
       } catch (err) {
