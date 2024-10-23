@@ -34,26 +34,14 @@ const TaskManagement: React.FC = () => {
       try {
         setIsLoading(true);
         const response = await http.get(`/user/${user?.sub}/task`);
-        console.log('user?.sub', user?.sub);
-
         console.log('Fetched tasks:', response.data);
-
-        console.log('response.data is', response.data);
-
-        const mappedTasks = response.data.map((task: any) => {
-          const parsedTaskDefinition = JSON.parse(task.task_definition);
-          
-          return {
-            id: task.id, 
-            url: parsedTaskDefinition.source[0].url,
-            dateCreated: new Date(task.created_at).toLocaleDateString(), 
-            timeCreated: new Date(task.created_at).toLocaleTimeString(),
-            status: mapStatus(task.status), // keep status
-          };
-        });
-          
-        console.log('mappedTasks is', mappedTasks);
-
+        const mappedTasks = response.data.map((task: any) => ({
+          id: task.ID,
+          url: task.task_definition.source[0].url,
+          dateCreated: new Date(task.CreatedAt).toLocaleDateString(),
+          timeCreated: new Date(task.CreatedAt).toLocaleTimeString(),
+          status: mapStatus(task.status),
+        }));
         setTasks(mappedTasks);
         setError(null);
       } catch (err) {
