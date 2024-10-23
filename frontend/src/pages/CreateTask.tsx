@@ -146,15 +146,22 @@ const TaskCreation = () => {
           })),
           output: [{ type: outputTypeMap[outputFormat] }],
           period: periodMap[frequencyUnit] // taskPeriod is only Hourly, Daily, Weekly, Monthly for now
-
           // dateRange is not implemented in BE yet
           // dateRange: {
           //   start: startDate,
           //   end: endDate
           // }
         };
-
-        const response = await http.post(`/user/${user?.sub}/task`, taskDefinition);
+        
+        const senderstuff = {
+          task_definition: taskDefinition, // 直接发送对象，不要转为字符串
+          task_name: "" ,// 可以添加任务名称
+          deleted_at:null,
+        };
+        
+        // 使用 Axios 发送请求，Axios 会自动处理 JSON 序列化
+        const response = await http.post(`/user/${user?.sub}/task`, senderstuff);
+        console.log('what we send to back end is',taskDefinition)
 
         if (response.status === 201) {
           toast.success(`Task created successfully!`);
