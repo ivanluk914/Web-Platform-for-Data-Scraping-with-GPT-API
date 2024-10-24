@@ -20,4 +20,4 @@ CREATE TABLE task_run_artifacts (
     PRIMARY KEY ((airflow_instance_id), artifact_id)
 ) WITH CLUSTERING ORDER BY (artifact_id DESC);
 
-CREATE INDEX ON task_run_artifacts (task_id);
+CREATE INDEX ON task_run_artifacts (airflow_task_id);
