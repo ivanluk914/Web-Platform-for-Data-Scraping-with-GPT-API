@@ -48,7 +48,7 @@ const columns = [
   { name: "EMAIL", uid: "email", sortable: true },
   { name: "NICKNAME", uid: "nickname", sortable: true },
   { name: "LAST LOGIN", uid: "last_login", sortable: true },
-  { name: "ROLE", uid: "role", sortable: true },
+  { name: "ROLE", uid: "role", sortable: false },
   { name: "ACTIONS", uid: "actions" },
 ];
 
@@ -83,7 +83,7 @@ const UserTable = ({
   const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set([]));
   const [visibleColumns, setVisibleColumns] = React.useState<Selection>(new Set(INITIAL_VISIBLE_COLUMNS));
   const [roleFilter, setRoleFilter] = React.useState<Selection>("all");
-  const [rowsPerPage, setRowsPerPage] = React.useState(15);
+  const [rowsPerPage, setRowsPerPage] = React.useState(5);
   const [page, setPage] = React.useState(1);
   const [sortDescriptor, setSortDescriptor] = React.useState<SortDescriptor>({
     column: "name",
