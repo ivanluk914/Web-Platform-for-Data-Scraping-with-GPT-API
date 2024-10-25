@@ -26,16 +26,13 @@ import {
   useDisclosure,
 } from "@nextui-org/react";
 import { BsSearch, BsThreeDotsVertical, BsChevronDown, BsDownload } from "react-icons/bs";
-import { useHttp } from '../providers/http-provider';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { API_ENDPOINTS } from "../api/apiEndPoints";
+import { UserModel } from "../models/user";
 
 enum UserRole {
   User = 1,
   Member = 2,
   Admin = 3,
 }
-
 
 const roleOptions = [
   { uid: "1", name: "User" },
@@ -54,37 +51,38 @@ const columns = [
 
 const INITIAL_VISIBLE_COLUMNS = ["name", "email", "nickname", "last_login", "role", "actions"];
 
-interface UserModel {
-  user_id?: string;
-  email?: string;
-  name?: string;
-  nickname?: string;
-  last_login?: string;
-  picture?: string;
-  roles?: number[];
-}
-
 interface UserTableProps {
   users: UserModel[];
   isLoading: boolean;
   error: Error | null;
-  onDeleteUser?: (userId: string) => void;
-  onAssignRole?: (userId: string, role: number) => void;
+  page: number;
+  pageSize: number;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
+  onDeleteUser: (userId: string) => void;
+  onUpdateRoles: (userId: string, rolesToAdd: number[], rolesToRemove: number[]) => void;
+  isDeleting: boolean;
+  isUpdatingRoles: boolean;
 }
 
 const UserTable = ({
   users,
   isLoading,
   error,
+  page,
+  pageSize,
+  setPage,
+  setPageSize,
   onDeleteUser,
-  onAssignRole,
+  onUpdateRoles,
+  isDeleting,
+  isUpdatingRoles,
 }: UserTableProps) => {
   const [filterValue, setFilterValue] = React.useState("");
   const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set([]));
   const [visibleColumns, setVisibleColumns] = React.useState<Selection>(new Set(INITIAL_VISIBLE_COLUMNS));
   const [roleFilter, setRoleFilter] = React.useState<Selection>("all");
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
-  const [page, setPage] = React.useState(1);
   const [sortDescriptor, setSortDescriptor] = React.useState<SortDescriptor>({
     column: "name",
     direction: "ascending",
@@ -141,44 +139,19 @@ const UserTable = ({
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
   const [selectedUserRoles, setSelectedUserRoles] = React.useState<number[]>([]);
   const [originalUserRoles, setOriginalUserRoles] = React.useState<number[]>([]);
-  
-  const http = useHttp();
-  const queryClient = useQueryClient();
 
-  // Delete user mutation
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      await http.delete(API_ENDPOINTS.DELETE_USER(userId));
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      onDeleteClose();
-    },
-    onError: (error) => {
-      console.error('Error deleting user:', error);
-      // Handle error (show toast notification, etc.)
-    }
-  });
+  const handleConfirmDelete = async () => {
+    onDeleteUser(selectedUserId);
+    onDeleteClose();
+  };
 
-  // Assign role mutation
-  const assignRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: number }) => {
-      await http.post(API_ENDPOINTS.ASSIGN_USER_ROLE(userId), { role });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    }
-  });
-
-  // Remove role mutation
-  const removeRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: number }) => {
-      await http.delete(API_ENDPOINTS.REMOVE_USER_ROLE(userId), { data: { role } });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    }
-  });
+  const handleRoleUpdate = async () => {
+    const rolesToAdd = selectedUserRoles.filter(role => !originalUserRoles.includes(role));
+    const rolesToRemove = originalUserRoles.filter(role => !selectedUserRoles.includes(role));
+    
+    await onUpdateRoles(selectedUserId, rolesToAdd, rolesToRemove);
+    onRoleClose();
+  };
 
   const handleDeleteClick = (userId: string) => {
     setSelectedUserId(userId);
@@ -190,31 +163,6 @@ const UserTable = ({
     setSelectedUserRoles(currentRoles);
     setOriginalUserRoles(currentRoles);
     onRoleOpen();
-  };
-
-  const handleConfirmDelete = async () => {
-    deleteUserMutation.mutate(selectedUserId);
-  };
-
-  const handleRoleUpdate = async () => {
-    try {
-      const rolesToAdd = selectedUserRoles.filter(role => !originalUserRoles.includes(role));
-      const rolesToRemove = originalUserRoles.filter(role => !selectedUserRoles.includes(role));
-
-      // Process role changes sequentially
-      for (const role of rolesToAdd) {
-        await assignRoleMutation.mutateAsync({ userId: selectedUserId, role });
-      }
-
-      for (const role of rolesToRemove) {
-        await removeRoleMutation.mutateAsync({ userId: selectedUserId, role });
-      }
-
-      onRoleClose();
-    } catch (error) {
-      console.error('Error updating roles:', error);
-      // Handle error (show toast notification, etc.)
-    }
   };
 
   const handleDownload = async () => {
@@ -486,7 +434,7 @@ const UserTable = ({
             <Button 
               color="danger" 
               onPress={handleConfirmDelete}
-              isLoading={deleteUserMutation.isPending}
+              isLoading={isDeleting}
             >
               Delete
             </Button>
@@ -524,7 +472,7 @@ const UserTable = ({
             <Button 
               color="primary" 
               onPress={handleRoleUpdate}
-              isLoading={assignRoleMutation.isPending || removeRoleMutation.isPending}
+              isLoading={isUpdatingRoles}
             >
               Update
             </Button>

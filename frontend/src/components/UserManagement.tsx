@@ -1,52 +1,133 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import UserTable from './UserTable';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useHttp } from '../providers/http-provider';
-import { API_ENDPOINTS } from '../api/apiEndPoints';
+import { UserService, RolesMap } from '../api/user-service';
+import { UserModel } from '../models/user';
 
 const UserManagement: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
   const http = useHttp();
+  const queryClient = useQueryClient();
+  const userService = new UserService(http);
 
-  const { isPending, error, data } = useQuery({
-    queryKey: ['usersWithRoles', page, pageSize],
-    queryFn: async () => {
-      const usersResponse = await http.get(API_ENDPOINTS.LIST_USERS);
+  // Query for fetching users list
+  const { data: usersData, isPending: isUsersPending } = useQuery<UserModel[]>({
+    queryKey: ['users'],
+    queryFn: () => userService.listUsers()
+  });
+
+  // Query for fetching roles for each user
+  const { data: userRoles, isPending: isRolesPending } = useQuery<RolesMap>({
+    queryKey: ['userRoles'],
+    queryFn: () => userService.getAllUserRoles(usersData || []),
+    enabled: !!usersData,
+  });
+
+  // Combine users and roles data
+  const combinedData = useMemo(() => {
+    if (!usersData || !userRoles) return [];
+    return usersData.map(user => ({
+      ...user,
+      roles: userRoles[user.user_id] || []
+    }));
+  }, [usersData, userRoles]);
+
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => userService.deleteUser(userId),
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previousUsers = queryClient.getQueryData<UserModel[]>(['users']);
       
-      // Access the `data` field inside the response
-      const usersData = usersResponse.data?.data;  // Extract the users array from the response
-      
-      if (Array.isArray(usersData)) {
-        const usersWithRoles = await Promise.all(
-          usersData.map(async (user: any) => {
-            const rolesResponse = await http.get(API_ENDPOINTS.LIST_USER_ROLES(user.user_id));
-            return {
-              ...user,
-              roles: rolesResponse.data,  // Add roles to each user
-            };
-          })
+      if (previousUsers) {
+        queryClient.setQueryData<UserModel[]>(['users'], 
+          previousUsers.filter(user => user.user_id !== userId)
         );
-        return usersWithRoles;
-      } else {
-        console.error("Expected an array of users, but received:", usersData);
-        return [];  // Return an empty array if the data is not an array
+      }
+      
+      return { previousUsers };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData(['users'], context.previousUsers);
       }
     },
-    placeholderData: keepPreviousData,
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
   });
+
+  // Assign role mutation
+  const assignRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: number }) => {
+      const roles = await userService.assignRole(userId, role);
+      return { userId, roles };
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData<RolesMap>(['userRoles'], (oldData) => ({
+        ...oldData,
+        [data.userId]: data.roles
+      }));
+    }
+  });
+
+  // Remove role mutation
+  const removeRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: number }) => {
+      const roles = await userService.removeRole(userId, role);
+      return { userId, roles };
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData<RolesMap>(['userRoles'], (oldData) => ({
+        ...oldData,
+        [data.userId]: data.roles
+      }));
+    }
+  });
+
+  // Handler for role updates
+  const handleRoleUpdate = async (userId: string, rolesToAdd: number[], rolesToRemove: number[]) => {
+    try {
+      const mutations = [
+        ...rolesToAdd.map(role => assignRoleMutation.mutateAsync({ userId, role })),
+        ...rolesToRemove.map(role => removeRoleMutation.mutateAsync({ userId, role }))
+      ];
+      
+      await Promise.all(mutations);
+      return true;
+    } catch (error) {
+      console.error('Error updating roles:', error);
+      return false;
+    }
+  };
+
+  // Handler for user deletion
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteUserMutation.mutateAsync(userId);
+      return true;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
+  };
 
   return (
     <div className="user-management">
       <UserTable
-        users={data || []}  // Ensure users is always an array
-        isLoading={isPending}
-        error={error as Error | null}
+        users={combinedData}
+        isLoading={isUsersPending || isRolesPending}
+        error={null}
         page={page}
         pageSize={pageSize}
         setPage={setPage}
         setPageSize={setPageSize}
+        onDeleteUser={handleDeleteUser}
+        onUpdateRoles={handleRoleUpdate}
+        isDeleting={deleteUserMutation.isPending}
+        isUpdatingRoles={assignRoleMutation.isPending || removeRoleMutation.isPending}
       />
     </div>
   );
