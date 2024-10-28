@@ -132,9 +132,9 @@ func main() {
 
 	// Setup routes
 	api := r.Group("/api")
-	if cfg.Server.IsProd() {
-		api.Use(middleware.JWTValidationMiddleware(logger, cfg.Auth0))
-	}
+	// if cfg.Server.IsProd() {
+	api.Use(middleware.JWTValidationMiddleware(logger, cfg.Auth0))
+	// }
 
 	handlers.SetupUserRoutes(api, userService)
 	handlers.SetupTaskRoutes(api, taskService)

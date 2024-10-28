@@ -16,6 +16,11 @@ type MockAuthClient struct {
 	mock.Mock
 }
 
+func (m *MockAuthClient) GetUserFromContext(ctx context.Context) (*models.User, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
 func (m *MockAuthClient) ListUsers(ctx context.Context, page int64, pageSize int64) ([]*models.User, int64, error) {
 	args := m.Called(ctx, page, pageSize)
 	return args.Get(0).([]*models.User), args.Get(1).(int64), args.Error(2)

@@ -88,6 +88,7 @@ func (s *TaskService) CreateTask(ctx context.Context, task models.Task, userID s
 		Owner:          userID,
 		TaskDefinition: task.TaskDefinition,
 		TaskName:       task.TaskName,
+		Status:         models.TaskStatusCreated,
 	}
 
 	createdTask, err := models.CreateTask(ctx, createTask)
@@ -118,6 +119,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, task models.Task, userID s
 
 	existingTask.TaskDefinition = task.TaskDefinition
 	existingTask.TaskName = task.TaskName
+	existingTask.Status = task.Status
 	existingTask.UpdatedAt = time.Now()
 
 	updatedTask, err := models.UpdateTask(ctx, *existingTask)
@@ -262,22 +264,22 @@ func (s *TaskService) CreateTaskRunArtifact(ctx context.Context, artifact *model
 }
 
 func (s *TaskService) MapTaskToDto(ctx context.Context, task *models.Task) (*models.TaskDto, error) {
-	taskRun, err := models.GetLatestRunForTask(ctx, uint64(task.ID))
-	if err != nil {
-		s.logger.Ctx(ctx).Error("Error while getting task run from db", zap.Error(err))
-		return nil, err
-	}
+	// taskRun, err := models.GetLatestRunForTask(ctx, uint64(task.ID))
+	// if err != nil {
+	// 	s.logger.Ctx(ctx).Error("Error while getting task run from db", zap.Error(err))
+	// 	return nil, err
+	// }
 
-	status := models.TaskStatusPending
-	if taskRun != nil {
-		status = taskRun.Status
-	}
+	// status := models.TaskStatusPending
+	// if taskRun != nil {
+	// 	status = taskRun.Status
+	// }
 
 	taskDto := &models.TaskDto{
 		ID:             strconv.FormatUint(uint64(task.ID), 10),
 		TaskName:       task.TaskName,
 		TaskDefinition: string(task.TaskDefinition),
-		Status:         status,
+		Status:         task.Status,
 		Owner:          task.Owner,
 		CreatedAt:      task.CreatedAt,
 		UpdatedAt:      task.UpdatedAt,

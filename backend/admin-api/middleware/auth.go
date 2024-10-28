@@ -22,7 +22,6 @@ type JWTClaims struct {
 	ShouldReject bool   `json:"shouldReject,omitempty"`
 }
 
-// Validate errors out if `ShouldReject` is true.
 func (c *JWTClaims) Validate(ctx context.Context) error {
 	if c.ShouldReject {
 		return errors.New("should reject was set to true")
@@ -37,7 +36,6 @@ func JWTValidationMiddleware(logger *otelzap.Logger, cfg config.Auth0Config) gin
 
 	issuer := cfg.Domain
 	audience := []string{cfg.Audience}
-
 	jwk_uri, err := url.Parse(issuer)
 	if err != nil {
 		logger.Fatal("failed to parse issuer uri", zap.String("issuer", issuer), zap.Error(err))

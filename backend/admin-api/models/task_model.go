@@ -117,6 +117,7 @@ type Task struct {
 	Owner          string          `json:"owner" gorm:"index:idx_owner"`
 	TaskName       string          `json:"task_name"`
 	TaskDefinition json.RawMessage `json:"task_definition" gorm:"type:jsonb"`
+	Status         TaskStatus      `json:"status"`
 	AirflowTaskId  string          `json:"airflow_task_id"`
 }
 
