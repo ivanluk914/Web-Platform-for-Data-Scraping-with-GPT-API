@@ -1,4 +1,4 @@
-export interface User {
+export interface UserModel {
     user_id: string;
     email: string;
     name: string;
@@ -7,4 +7,5 @@ export interface User {
     nickname: string;
     last_login: string;
     picture: string;
+    roles?: number[];
 }
