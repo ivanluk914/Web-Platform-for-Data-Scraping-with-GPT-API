@@ -1,12 +1,13 @@
 import { API_ENDPOINTS } from "./apiEndPoints";
 import { UserModel } from "../models/user";
+import { AxiosInstance } from "axios";
 
 export interface RolesMap {
   [key: string]: number[];
 }
 
 export class UserService {
-  constructor(private http: any) {}
+  constructor(private http: AxiosInstance) {}
 
   async listUsers(): Promise<UserModel[]> {
     const response = await this.http.get(API_ENDPOINTS.LIST_USERS);

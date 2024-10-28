@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import UserTable from './UserTable';
-import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import { useHttp } from '../providers/http-provider';
 import { UserService, RolesMap } from '../api/user-service';
 import { UserModel } from '../models/user';
@@ -53,6 +54,10 @@ const UserManagement: React.FC = () => {
       if (context?.previousUsers) {
         queryClient.setQueryData(['users'], context.previousUsers);
       }
+      toast.error('Failed to delete user');
+    },
+    onSuccess: () => {
+      toast.success('User deleted successfully');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -70,6 +75,10 @@ const UserManagement: React.FC = () => {
         ...oldData,
         [data.userId]: data.roles
       }));
+      toast.success('Role assigned successfully');
+    },
+    onError: () => {
+      toast.error('Failed to assign role');
     }
   });
 
@@ -84,6 +93,10 @@ const UserManagement: React.FC = () => {
         ...oldData,
         [data.userId]: data.roles
       }));
+      toast.success('Role removed successfully');
+    },
+    onError: () => {
+      toast.error('Failed to remove role');
     }
   });
 
