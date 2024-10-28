@@ -185,6 +185,7 @@ func (s *TaskService) GetTaskRun(ctx context.Context, taskRunID string) (*models
 }
 
 func (s *TaskService) CreateTaskRun(ctx context.Context, taskRun models.TaskRun) (*models.TaskRun, error) {
+	taskRun.Status = models.TaskStatusPending
 	createdTaskRun, err := models.CreateTaskRun(ctx, taskRun)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Error while creating task run", zap.Error(err))
