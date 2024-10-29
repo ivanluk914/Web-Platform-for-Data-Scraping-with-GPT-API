@@ -1,10 +1,11 @@
 export enum TaskStatus {
   Unknown = 0,
-  ongoing = 1,
+  created = 1,
   running = 2,
   completed = 3,
   failed = 4,
-  canceled = 5
+  canceled = 5,
+  pending = 6
 }
 
 export enum OutputType {
@@ -66,7 +67,7 @@ export const mapStatus = (status: number): keyof typeof TaskStatus => {
 
 export const statusColorMap: Record<keyof typeof TaskStatus, "primary" | "success" | "danger" | "warning" | "default"> = {
   Unknown: "default",
-  ongoing: "primary",
+  created: "primary",
   running: "default",
   completed: "success",
   failed: "warning",
