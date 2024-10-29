@@ -13,36 +13,30 @@ import { outputTypeMap, periodMap, taskRunTypeMap, TaskRunType, TargetType } fro
 const TaskCreation = () => {
   // State for form fields
   const { user } = useAuth0();
-
   const [taskName, setTaskName] = useState('');
   const [isVisible, setIsVisible] = useState('block');
-
   const [sourceURL, setSourceURL] = useState('');
-
   const [outputFormat, setOutputFormat] = useState('');
-  
-  const variants = "faded";
   const form1 = [
     { label: "CSV", value: "CSV" },
     { label: "JSON", value: "JSON" },
     { label: "MARKDOWN", value: "MARKDOWN" }
   ];
-  
-  const today = new Date();
-  const [startDate, setStartDate] = useState<CalendarDate | null>(
-    new CalendarDate(today.getFullYear(), today.getMonth() + 1, today.getDate())
-  );
-  const [endDate, setEndDate] = useState<CalendarDate | null>(
-    new CalendarDate(today.getFullYear(), today.getMonth() + 1, today.getDate())
-  );
-
-  const [frequency,setFrequency]=useState('')
-  const [frequencyUnit,setFrequencyUnit]=useState('')
+  // const today = new Date();
+  // const [startDate, setStartDate] = useState<CalendarDate | null>(
+  //   new CalendarDate(today.getFullYear(), today.getMonth() + 1, today.getDate())
+  // );
+  // const [endDate, setEndDate] = useState<CalendarDate | null>(
+  //   new CalendarDate(today.getFullYear(), today.getMonth() + 1, today.getDate())
+  // );
+  // const [frequency,setFrequency]=useState('')
+  // const [frequencyUnit,setFrequencyUnit]=useState('')
 
   const [keywords, setKeywords] = useState(['']);
   const [dataTypes, setDataTypes] = useState(['']);
   const [content, setContent] = useState('');
   const [GPTResponse, setGPTResponse] = useState('');
+  const [canCreateTask, setCanCreateTask] = useState(false);
   // const [taskRunType, setTaskRunType] = useState<TaskRunType>(TaskRunType.Unknown);
   // const isPeriodicTask = taskRunType === TaskRunType.Periodic;
 
@@ -64,16 +58,16 @@ const TaskCreation = () => {
       });
 
       const data = response.data;
-      console.log('Task sent successfully:', data);
-
       if (data.error) {
         console.error('Error from backend:', data.error);
         setContent('🚫 Oops! They seem to know we are scraping them. Please check the URL and try again.');
+        setCanCreateTask(false);
         return;
       }
-      console.log('GPT response:', data.gpt_response);
+      // console.log('GPT response:', data.gpt_response);
       if (data.gpt_response === 'No data found') {
         setContent('🔍 No data found, please try again');
+        setCanCreateTask(false);
       } else {
         // First replace escaped newlines, then replace actual newlines
         const formattedResponse = data.gpt_response
@@ -81,10 +75,12 @@ const TaskCreation = () => {
           .replace(/\n/g, '\n');
         setGPTResponse(data.gpt_response);
         setContent(formattedResponse);
+        setCanCreateTask(true);
       }
     } catch (error) {
       console.error('Error sending task to backend:', error);
       toast.error('An error occurred while sending the task. Please try again.');
+      setCanCreateTask(false);
     }
   };
 
@@ -93,7 +89,6 @@ const TaskCreation = () => {
 
     // Reset content to loading state before making the request
     setContent('🔍 Extracting data...');
-
     // Validation checks
     const areKeywordsFilled = validateNonEmptyArray(keywords);
     const areDataTypesFilled = validateNonEmptyArray(dataTypes);
@@ -173,6 +168,10 @@ const TaskCreation = () => {
     }
     const navigate = useNavigate();
     const continueTask = async () => {
+      if (!canCreateTask) {
+        toast.error('Cannot create task due to previous errors.');
+        return;
+      }
       try {
         const taskDefinition = {
           type: 1, // single TaskRunType
@@ -206,7 +205,7 @@ const TaskCreation = () => {
         if (response.status === 201) {
           toast.success(`Task created successfully!`);
           localStorage.removeItem('hasCreatedTask');
-          navigate('/home'); // path can be changed to /home/task-management/ongoing once implemented
+          navigate('/home'); 
         }
       } catch (error) {
         console.error('Error creating task:', error);
@@ -227,14 +226,14 @@ const TaskCreation = () => {
       }
     };
 
-  const handleDateChange = (setter: React.Dispatch<React.SetStateAction<CalendarDate | null>>) => (date: CalendarDate | null) => {
-    if (date) {
-      setter(date);
-    } else {
-      const defaultDate = new CalendarDate(today.getFullYear(), today.getMonth(), today.getDate());
-      setter(defaultDate);
-    }
-  };
+  // const handleDateChange = (setter: React.Dispatch<React.SetStateAction<CalendarDate | null>>) => (date: CalendarDate | null) => {
+  //   if (date) {
+  //     setter(date);
+  //   } else {
+  //     const defaultDate = new CalendarDate(today.getFullYear(), today.getMonth(), today.getDate());
+  //     setter(defaultDate);
+  //   }
+  // };
 
   return (
     <div className="max-w-xl mx-auto">
