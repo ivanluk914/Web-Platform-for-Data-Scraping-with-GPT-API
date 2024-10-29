@@ -1,14 +1,19 @@
 package clients
 
 import (
-	"admin-api/config"
-	"admin-api/models"
 	"context"
 	"net/http"
+	"net/url"
+
+	"admin-api/config"
+	apperrors "admin-api/errors"
+	"admin-api/models"
 
 	"github.com/auth0/go-auth0"
 	"github.com/auth0/go-auth0/authentication"
 	"github.com/auth0/go-auth0/management"
+	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
+	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/pkg/errors"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 )
@@ -35,6 +40,7 @@ type authClient struct {
 }
 
 type AuthClient interface {
+	GetUserFromContext(ctx context.Context) (*models.User, error)
 	ListUsers(ctx context.Context, page int64, pageSize int64) ([]*models.User, int64, error)
 	ListAllUsers(ctx context.Context) ([]*models.User, error)
 	GetUser(ctx context.Context, userID string) (*models.User, error)
@@ -47,9 +53,15 @@ type AuthClient interface {
 
 func NewAuthClient(logger *otelzap.Logger, httpClient *http.Client, cfg config.Auth0Config) (AuthClient, error) {
 	ctx := context.Background()
+
+	issuerUrl, err := url.Parse(cfg.Domain)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse issuer url")
+	}
+
 	authAPI, err := authentication.New(
 		ctx,
-		cfg.Domain,
+		issuerUrl.Hostname(),
 		authentication.WithClientID(cfg.ClientID),
 		authentication.WithClientSecret(cfg.ClientSecret),
 		authentication.WithClient(httpClient),
@@ -58,7 +70,7 @@ func NewAuthClient(logger *otelzap.Logger, httpClient *http.Client, cfg config.A
 		return nil, errors.Wrap(err, "failed to create authentication client")
 	}
 	managementAPI, err := management.New(
-		cfg.Domain,
+		issuerUrl.Hostname(),
 		management.WithClientCredentials(ctx, cfg.ClientID, cfg.ClientSecret),
 		management.WithClient(httpClient),
 	)
@@ -71,6 +83,18 @@ func NewAuthClient(logger *otelzap.Logger, httpClient *http.Client, cfg config.A
 		management:     managementAPI,
 	}
 	return authClient, nil
+}
+
+func (c *authClient) GetUserFromContext(ctx context.Context) (*models.User, error) {
+	ctxValue := ctx.Value(jwtmiddleware.ContextKey{})
+	if ctxValue == nil {
+		return nil, apperrors.ErrNoAuthContext
+	}
+	claims, ok := ctxValue.(*validator.ValidatedClaims)
+	if !ok {
+		return nil, apperrors.ErrInvalidClaims
+	}
+	return c.GetUser(ctx, claims.RegisteredClaims.Subject)
 }
 
 func (c *authClient) ListUsers(ctx context.Context, page int64, pageSize int64) ([]*models.User, int64, error) {

@@ -31,17 +31,23 @@ const TaskManagement: React.FC = () => {
   // Fetch tasks from backend
   useEffect(() => {
     const fetchTasks = async () => {
+      if (!user) {
+        return
+      };
       try {
         setIsLoading(true);
-        const response = await http.get(`/user/${user?.sub}/task`);
+        const response = await http.get(`/user/${user.sub}/task`);
         console.log('Fetched tasks:', response.data);
-        const mappedTasks = response.data.map((task: any) => ({
-          id: task.ID,
-          url: task.task_definition.source[0].url,
-          dateCreated: new Date(task.CreatedAt).toLocaleDateString(),
-          timeCreated: new Date(task.CreatedAt).toLocaleTimeString(),
-          status: mapStatus(task.status),
-        }));
+        const mappedTasks = response.data.map((task: any) => {
+          const taskDefinition = JSON.parse(task.task_definition);
+          return {
+            id: task.id,
+            url: taskDefinition.source[0].url,
+            dateCreated: new Date(task.created_at).toLocaleDateString(),
+            timeCreated: new Date(task.created_at).toLocaleTimeString(),
+            status: mapStatus(task.status),
+          }
+        });
         setTasks(mappedTasks);
         setError(null);
       } catch (err) {
