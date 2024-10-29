@@ -240,18 +240,29 @@ func mapUserToAuth0User(user *models.User) *management.User {
 	if user == nil {
 		return nil
 	}
-	return &management.User{
-		ID:         user.ID,
-		Email:      user.Email,
-		Name:       user.Name,
-		Picture:    user.Picture,
-		GivenName:  user.GivenName,
-		FamilyName: user.FamilyName,
-		Username:   user.Username,
-		Nickname:   user.Nickname,
-		ScreenName: user.ScreenName,
-		Connection: user.Connection,
-		Location:   user.Location,
-		LastLogin:  user.LastLogin,
+	
+	auth0User := &management.User{}
+	if user.Email != nil {
+		auth0User.Email = user.Email
 	}
+	if user.Name != nil {
+		auth0User.Name = user.Name
+	}
+	if user.Picture != nil {
+		auth0User.Picture = user.Picture
+	}
+	if user.GivenName != nil {
+		auth0User.GivenName = user.GivenName
+	}
+	if user.FamilyName != nil {
+		auth0User.FamilyName = user.FamilyName
+	}
+	if user.Username != nil {
+		auth0User.Username = user.Username
+	}
+	if user.Nickname != nil {
+		auth0User.Nickname = user.Nickname
+	}
+	
+	return auth0User
 }

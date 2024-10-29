@@ -10,6 +10,7 @@ import { Task, mapStatus, statusColorMap } from '../models/task';
 import { toast } from 'react-hot-toast';
 
 const columns = [
+  { name: "TASK NAME", uid: "taskName" },
   { name: "URL", uid: "url" },
   { name: "DATE CREATED", uid: "dateCreated" },
   { name: "TIME CREATED", uid: "timeCreated" },
@@ -31,22 +32,32 @@ const TaskManagement: React.FC = () => {
   // Fetch tasks from backend
   useEffect(() => {
     const fetchTasks = async () => {
-      if (!user) {
-        return
-      };
       try {
         setIsLoading(true);
-        const response = await http.get(`/user/${user.sub}/task`);
-        console.log('Fetched tasks:', response.data);
+        const response = await http.get(`/user/${user?.sub}/task`);
         const mappedTasks = response.data.map((task: any) => {
-          const taskDefinition = JSON.parse(task.task_definition);
+          // Check if task_definition exists and is a string before parsing
+          let url = '';
+          try {
+            if (task.task_definition) {
+              const parsedTaskDefinition = JSON.parse(task.task_definition);
+              if (parsedTaskDefinition.source && parsedTaskDefinition.source[0]) {
+                url = parsedTaskDefinition.source[0].url;
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing task definition:', e);
+          }
+
           return {
-            id: task.id,
-            url: taskDefinition.source[0].url,
-            dateCreated: new Date(task.created_at).toLocaleDateString(),
+            id: task.id, 
+            url: url,
+            dateCreated: new Date(task.created_at).toLocaleDateString(), 
             timeCreated: new Date(task.created_at).toLocaleTimeString(),
             status: mapStatus(task.status),
-          }
+            taskName: task.task_name || '',
+            taskDefinition: task.task_definition || '',
+          };
         });
         setTasks(mappedTasks);
         setError(null);
@@ -76,23 +87,56 @@ const TaskManagement: React.FC = () => {
 
   const confirmDeleteTask = async () => {
     if (selectedTaskId) {
-      console.log('Confirmed deletion of task:', selectedTaskId);
-      // TODO: Implement deletion logic
-      setIsDeleteModalOpen(false);
-      setSelectedTaskId(null);
-      toast.success('Task deleted successfully');
-      navigate('/home/tasks');
+      try {
+        const response = await http.delete(`/user/${user?.sub}/task/${selectedTaskId}`);
+        if (response.status === 200) {
+          // Update local state by filtering out the deleted task
+          setTasks(prevTasks => prevTasks.filter(task => task.id !== selectedTaskId));
+          setIsDeleteModalOpen(false);
+          setSelectedTaskId(null);
+          toast.success('Task deleted successfully');
+        } else {
+          toast.error('Failed to delete task. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        toast.error('An error occurred while deleting the task.');
+        setIsDeleteModalOpen(false);
+        setSelectedTaskId(null);
+      }
     }
   };
 
   const confirmCancelTask = async () => {
     if (selectedTaskId) {
-      console.log('Confirmed cancellation of task:', selectedTaskId);
-      // TODO: Implement cancellation logic
-      setIsCancelModalOpen(false);
-      setSelectedTaskId(null);
-      toast.success('Task canceled successfully');
-      navigate('/home/tasks');
+      try {
+        const taskToUpdate = tasks.find(task => task.id === selectedTaskId);
+        if (!taskToUpdate) {
+          throw new Error('Task not found');
+        }
+        const updatePayload = {
+          status: 5
+        };
+
+        const response = await http.put(`/user/${user?.sub}/task/${selectedTaskId}`, updatePayload);
+        
+        if (response.status === 200) {
+          setTasks(prevTasks => prevTasks.map(task => 
+            task.id === selectedTaskId ? { ...task, status: 'canceled' } : task
+          ));
+          setIsCancelModalOpen(false);
+          setSelectedTaskId(null);
+          toast.success('Task canceled successfully');
+        } else {
+          toast.error('Failed to cancel task. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error canceling task:', error);
+        toast.error('An error occurred while canceling the task.');
+      } finally {
+        setIsCancelModalOpen(false);
+        setSelectedTaskId(null);
+      }
     }
   };
 
@@ -100,6 +144,8 @@ const TaskManagement: React.FC = () => {
     const cellValue = task[columnKey as keyof Task];
 
     switch (columnKey) {
+      case "taskName":
+        return <span>{task.taskName}</span>;
       case "url":
         return (
           <Link href={task.url} isExternal>
@@ -120,7 +166,7 @@ const TaskManagement: React.FC = () => {
                 <GrView />
               </span>
             </Tooltip>
-            {task.status !== 'ongoing' && task.status !== 'running' ? (
+            {task.status === "canceled" ? (
               <Tooltip color="danger" content="Delete Task" delay={0} closeDelay={0} size="sm">
                 <span className="text-lg text-danger cursor-pointer active:opacity-50" onClick={() => handleDeleteTask(task.id)}>
                   <MdOutlineDeleteForever />  
@@ -145,8 +191,10 @@ const TaskManagement: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Task Management</h2>
-      <Table aria-label="Tasks table with custom cells">
+      <h1 className="text-3xl font-bold text-gray-800 mb-4">Task Management</h1>
+      <Table
+        aria-label="Tasks table with custom cells"
+        >
         <TableHeader columns={columns}>
           {(column) => (
             <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
@@ -154,9 +202,9 @@ const TaskManagement: React.FC = () => {
             </TableColumn>
           )}
         </TableHeader>
-        <TableBody items={tasks}>
+        <TableBody items={tasks} emptyContent={<div>No tasks to display.</div>}>
           {(item) => (
-            <TableRow key={item.id}>
+            <TableRow key={item.id} >
               {(columnKey) => <TableCell key={`${item.id}-${columnKey}`}>{renderCell(item, columnKey)}</TableCell>}
             </TableRow>
           )}

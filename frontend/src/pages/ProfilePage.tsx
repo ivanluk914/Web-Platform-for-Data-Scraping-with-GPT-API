@@ -1,263 +1,243 @@
-import { useState, useRef, useEffect } from 'react';
-import { Input, Button, Avatar } from '@nextui-org/react';
+import { useState, useEffect } from 'react';
+import { Input, Button, Avatar, Skeleton } from '@nextui-org/react';
 import { useForm, Controller } from 'react-hook-form';
-import {
-  validateEmail,
-  validatePassword,
-  getPasswordErrorMessage,
-} from '../utils/validationUtils';
-import { FiEdit } from 'react-icons/fi';
-import { AiOutlineCheckCircle } from 'react-icons/ai';
+import { useAuth0 } from '@auth0/auth0-react';
+import { useHttp } from '../providers/http-provider';
+import { UserModel } from '../models/user';
+import { toast } from 'react-hot-toast';
+import { emitProfileUpdated } from '../utils/events';
+import { validateEmail, validateName, validateURL } from '../utils/validationUtils';
 
 interface ProfileFormInputs {
-  username: string;
-  password: string;
   email: string;
-  userRole: string;
-  email_verified?: boolean;
-  created_at?: string;
-  last_login?: string;
+  name: string;
+  given_name: string | null;
+  family_name: string | null;
+  picture: string;
 }
 
 const ProfilePage = () => {
-  const [userOrigin, setUserOrigin] = useState<'acc/pwd' | 'auth0'>('auth0'); // Change as needed
-  const [avatarImage, setAvatarImage] = useState(
-    'https://i.pravatar.cc/150?u=a042581f4e29026704d'
-  );
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (userOrigin === 'auth0') {
-      // Replace with actual Auth0 picture URL
-      setAvatarImage('https://i.pravatar.cc/150?u=auth0user');
-    }
-  }, [userOrigin]);
+  const { user, isAuthenticated } = useAuth0();
+  const http = useHttp();
+  const [profileData, setProfileData] = useState<UserModel | null>(null);
+  const [isEditable, setIsEditable] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors },
+    reset,
   } = useForm<ProfileFormInputs>({
     mode: 'onChange',
-    defaultValues: {
-      username: 'Jane Doe',
-      password: '',
-      email: 'test@test.com',
-      userRole: 'Admin',
-      email_verified: true, // or false
-      created_at: '2022-01-01',
-      last_login: '2022-01-15',
-    },
   });
 
-  const onSubmit = (data: ProfileFormInputs) => {
-    // Handle profile update logic
-    console.log(data);
-    alert('Profile updated successfully!');
-  };
-
-  const handleEditAvatar = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file type
-      if (file.type === 'image/png' || file.type === 'image/jpeg') {
-        const imageUrl = URL.createObjectURL(file);
-        setAvatarImage(imageUrl);
-      } else {
-        alert('Please select a PNG or JPG image.');
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (isAuthenticated && user?.sub) {
+        try {
+          setIsLoading(true);
+          const response = await http.get(`/user/${user.sub}`);
+          const updatedData = {
+            ...response.data,
+            given_name: response.data.given_name || null,
+            family_name: response.data.family_name || null,
+          };
+          setProfileData(updatedData);
+          reset(updatedData);
+          setIsEditable(user.sub.startsWith('auth0|'));
+        } catch (error) {
+          console.error('Error fetching profile data:', error);
+          toast.error('Failed to fetch profile data');
+        } finally {
+          setIsLoading(false);
+        }
       }
+    };
+
+    fetchProfileData();
+  }, [isAuthenticated, user, http, reset]);
+
+  const onSubmit = async (data: ProfileFormInputs) => {
+    if (isAuthenticated && user?.sub) {
+      try {
+        const updatedData = {
+          ...data,
+          given_name: data.given_name,
+          family_name: data.family_name,
+        };
+        await http.put(`/user/${user.sub}`, updatedData);
+        setProfileData(updatedData as UserModel);
+        toast.success('Profile updated successfully!');
+        emitProfileUpdated();
+        reset(updatedData); 
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        toast.error('Failed to update profile');
+    }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white shadow-md rounded-lg overflow-hidden max-w-2xl mx-auto p-8">
+          <Skeleton className="w-24 h-24 rounded-full mb-4" />
+          <Skeleton className="w-48 h-6 mb-2" />
+          <Skeleton className="w-64 h-4 mb-6" />
+          <Skeleton className="w-full h-10" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !profileData) {
+    return <div>Unable to load profile data. Please try again later.</div>;
+  }
 
   return (
-    <div className="max-w-xl mx-auto">
-      <div className="bg-white p-8 rounded-lg shadow-md">
-        {/* Title */}
-        <h1 className="text-3xl font-bold mb-2 text-black">Profile Dashboard</h1>
-        {/* Description */}
-        <p className="text-gray-900 mb-6">
-          Customize settings, email preferences, and password.
-        </p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="bg-white shadow-md rounded-lg overflow-hidden max-w-2xl mx-auto">
+        <div className="p-8">
+          <h1 className="text-3xl font-bold mb-2 text-black">Profile Dashboard</h1>
+          <p className="text-gray-600 mb-6">
+            {isEditable ? "Customize Profile Information" : "View Profile Information"}
+          </p>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Avatar and User Info */}
-          <div className="flex items-center mb-6 bg-slate-100 rounded-lg p-4">
-            <div className="relative">
-              <Avatar size="lg" className="rounded-full" src={avatarImage} />
-              {userOrigin === 'acc/pwd' && (
-                <>
-                  <button
-                    type="button"
-                    className="absolute bottom-0 right-0 bg-white rounded-full p-1"
-                    onClick={handleEditAvatar}
-                  >
-                    <FiEdit size={10} />
-                  </button>
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg"
-                    ref={fileInputRef}
-                    onChange={handleAvatarChange}
-                    style={{ display: 'none' }}
-                  />
-                </>
-              )}
-            </div>
-            <div className="ml-4">
-              <Controller
-                name="username"
-                control={control}
-                render={({ field }) => (
-                  <p className="text-lg text-black">{field.value}</p>
-                )}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="flex items-center mb-6 bg-slate-100 rounded-lg p-4">
+              <Avatar
+                size="lg"
+                src={profileData?.picture}
+                alt={profileData?.name}
+                className="rounded-full"
               />
-              <Controller
-                name="userRole"
-                control={control}
-                render={({ field }) => (
-                  <p className="text-slate-500">{field.value}</p>
-                )}
-              />
+              <div className="ml-4">
+                <p className="text-md font-semibold text-black">{profileData?.name}</p>
+                <p className="text-xs text-slate-400">{profileData?.email}</p>
+              </div>
             </div>
-          </div>
 
-          {/* Email Field */}
-          {userOrigin === 'acc/pwd' && (
-            <div className="mb-4">
+            {isEditable && (
+              <div className="mb-4">
+                <Controller
+                  name="picture"
+                  control={control}
+                  rules={{
+                    validate: (value) => !value || validateURL(value) || "Please enter a valid URL"
+                  }}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      type="text"
+                      label="Picture URL"
+                      className="bg-white text-black"
+                      isInvalid={!!errors.picture}
+                      errorMessage={errors.picture?.message}
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            <div className="space-y-4">
               <Controller
                 name="email"
                 control={control}
                 rules={{
                   required: 'Email is required',
-                  validate: (value) =>
-                    validateEmail(value) || 'Invalid email address',
+                  validate: (value) => validateEmail(value) || "Please enter a valid email address"
                 }}
-                render={({ field, fieldState: { error } }) => (
+                render={({ field }) => (
                   <Input
                     {...field}
                     type="email"
                     label="Email Address"
-                    placeholder="Enter new email address"
                     className="bg-white text-black"
-                    isInvalid={!!error}
-                    errorMessage={error?.message}
-                    variant="bordered"
+                    isInvalid={!!errors.email}
+                    errorMessage={errors.email?.message}
+                    isDisabled={!isEditable}
                   />
                 )}
               />
-            </div>
-          )}
-          {/* Password Field */}
-          {userOrigin === 'acc/pwd' && (
-            <div className="mb-4">
+
               <Controller
-                name="password"
+                name="name"
                 control={control}
                 rules={{
-                  validate: (value) =>
-                    value === '' ||
-                    validatePassword(value) ||
-                    getPasswordErrorMessage(),
+                  required: 'Name is required',
+                  validate: (value) => value !== '' || "Please enter a valid name (2-25 characters, letters, spaces, hyphens, and apostrophes only)"
                 }}
-                render={({ field, fieldState: { error } }) => (
+                render={({ field }) => (
                   <Input
                     {...field}
-                    type="password"
-                    label="Password"
-                    placeholder="Enter new password"
+                    type="text"
+                    label="Name (Will be displayed in the app)"
                     className="bg-white text-black"
-                    isInvalid={!!error}
-                    errorMessage={error?.message}
-                    variant="bordered"
+                    isInvalid={!!errors.name}
+                    errorMessage={errors.name?.message}
+                    isDisabled={!isEditable}
                   />
                 )}
               />
-            </div>
-          )}
 
-          {userOrigin === 'auth0' && (
-            <>
-              {/* Email Field */}
-              <div className="mb-4">
-                <Controller
-                  name="email"
-                  control={control}
-                  render={({ field }) => (
-                    <div>
+              {!user?.sub?.startsWith('auth0|') && (
+                <>
+                  <Controller
+                    name="given_name"
+                    control={control}
+                    rules={{
+                      validate: (value) => value === '' || value === null || validateName(value) || "Please enter a valid given name"
+                    }}
+                    render={({ field }) => (
                       <Input
                         {...field}
-                        type="email"
-                        label="Email Address"
+                        type="text"
+                        label="Given Name"
                         className="bg-white text-black"
-                        readOnly
-                        variant="bordered"
+                        isInvalid={!!errors.given_name}
+                        errorMessage={errors.given_name?.message}
+                        isDisabled={!isEditable}
+                        value={field.value || ''}  // Convert null to empty string for input
+                        onChange={(e) => field.onChange(e.target.value || null)}  // Convert empty string to null
                       />
-                      {field.value && control._defaultValues.email_verified && (
-                        <div className="flex items-center mt-1">
-                          <AiOutlineCheckCircle className="text-green-500 mr-1" />
-                          <span className="text-green-500 text-sm">Verified</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                />
-              </div>
+                    )}
+                  />
 
-              {/* Created At Field */}
-              <div className="mb-4">
-                <Controller
-                  name="created_at"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      type="text"
-                      label="Account Created At"
-                      className="bg-white text-black"
-                      readOnly
-                      variant="bordered"
-                    />
-                  )}
-                />
-              </div>
+                  <Controller
+                    name="family_name"
+                    control={control}
+                    rules={{
+                      validate: (value) => value === '' || value === null || validateName(value) || "Please enter a valid family name"
+                    }}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type="text"
+                        label="Family Name"
+                        className="bg-white text-black"
+                        isInvalid={!!errors.family_name}
+                        errorMessage={errors.family_name?.message}
+                        isDisabled={!isEditable}
+                        value={field.value || ''}  // Convert null to empty string for input
+                        onChange={(e) => field.onChange(e.target.value || null)}  // Convert empty string to null
+                      />
+                    )}
+                  />
+                </>
+              )}
+            </div>
 
-              {/* Last Login Field */}
-              <div className="mb-4">
-                <Controller
-                  name="last_login"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      type="text"
-                      label="Last Login"
-                      className="bg-white text-black"
-                      readOnly
-                      variant="bordered"
-                    />
-                  )}
-                />
-              </div>
-            </>
-          )}
-
-          {/* Update Profile Button */}
-          {userOrigin === 'acc/pwd' && (
-            <Button
-              type="submit"
-              className="w-36 bg-black text-white"
-              isDisabled={!isValid}
-            >
-              Update Profile
-            </Button>
-          )}
-        </form>
+            {isEditable && (
+              <Button
+                type="submit"
+                className="w-full bg-black text-white"
+              >
+                Update Profile
+              </Button>
+            )}
+          </form>
+        </div>
       </div>
     </div>
   );

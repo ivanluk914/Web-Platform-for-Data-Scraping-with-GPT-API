@@ -128,6 +128,11 @@ func (s *TaskService) UpdateTask(ctx context.Context, task models.Task, userID s
 		return nil, err
 	}
 
+	if err := models.ClearTaskCache(ctx, taskIDUint); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to clear task cache", zap.Error(err))
+		return nil, err
+	}
+
 	return updatedTask, nil
 }
 
