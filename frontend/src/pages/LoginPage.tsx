@@ -6,14 +6,14 @@ const LoginPage = () => {
   const { loginWithRedirect } = useAuth0();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
+    <div className="flex flex-col items-center justify-center min-h-screen animated-gradient">
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-md">
         <CardHeader className="flex gap-3">
           <Image
             alt="Claude Collaborators logo"
             height={40}
             radius="sm"
-            src="https://avatars.githubusercontent.com/u/86160567?s=200&v=4"
+            src="./public/logo.png"
             width={40}
           />
           <div className="flex flex-col">
@@ -36,9 +36,6 @@ const LoginPage = () => {
           </Button>
         </CardBody>
       </Card>
-      <p className="mt-4 text-white text-small">
-        © 2023 Claude Collaborators. All rights reserved.
-      </p>
     </div>
   );
 };
