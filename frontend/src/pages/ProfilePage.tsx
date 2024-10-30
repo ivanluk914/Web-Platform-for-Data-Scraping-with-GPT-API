@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Input, Button, Avatar, Skeleton } from '@nextui-org/react';
+import { Input, Button, Avatar, Skeleton, Card, CardBody } from '@nextui-org/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useHttp } from '../providers/http-provider';
-import { UserModel } from '../models/user';
 import { toast } from 'react-hot-toast';
-import { emitProfileUpdated } from '../utils/events';
 import { validateEmail, validateName, validateURL } from '../utils/validationUtils';
+import { useUser } from '../providers/user-provider';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 interface ProfileFormInputs {
   email: string;
@@ -19,9 +19,10 @@ interface ProfileFormInputs {
 const ProfilePage = () => {
   const { user, isAuthenticated } = useAuth0();
   const http = useHttp();
-  const [profileData, setProfileData] = useState<UserModel | null>(null);
-  const [isEditable, setIsEditable] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { currentUser, isLoading } = useUser();
+
+  const isEditable = currentUser?.user_id.startsWith('auth0|') ?? false;
 
   const {
     control,
@@ -30,91 +31,90 @@ const ProfilePage = () => {
     reset,
   } = useForm<ProfileFormInputs>({
     mode: 'onChange',
+    defaultValues: {
+      email: '',
+      name: '',
+      given_name: '',
+      family_name: '',
+      picture: '',
+    },
   });
 
   useEffect(() => {
-    const fetchProfileData = async () => {
-      if (isAuthenticated && user?.sub) {
-        try {
-          setIsLoading(true);
-          const response = await http.get(`/user/${user.sub}`);
-          const updatedData = {
-            ...response.data,
-            given_name: response.data.given_name || null,
-            family_name: response.data.family_name || null,
-          };
-          setProfileData(updatedData);
-          reset(updatedData);
-          setIsEditable(user.sub.startsWith('auth0|'));
-        } catch (error) {
-          console.error('Error fetching profile data:', error);
-          toast.error('Failed to fetch profile data');
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
+    if (currentUser) {
+      reset(currentUser);
+    }
+  }, [currentUser, reset]);
 
-    fetchProfileData();
-  }, [isAuthenticated, user, http, reset]);
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: ProfileFormInputs) => {
+      const updatedData = {
+        ...data,
+        given_name: data.given_name,
+        family_name: data.family_name,
+      };
+      await http.put(`/user/${currentUser?.user_id}`, updatedData);
+      return updatedData;
+    },
+    onError: () => {
+      toast.error('Failed to update profile');
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Profile updated successfully');
+    },
+  });
 
   const onSubmit = async (data: ProfileFormInputs) => {
     if (isAuthenticated && user?.sub) {
-      try {
-        const updatedData = {
-          ...data,
-          given_name: data.given_name,
-          family_name: data.family_name,
-        };
-        await http.put(`/user/${user.sub}`, updatedData);
-        setProfileData(updatedData as UserModel);
-        toast.success('Profile updated successfully!');
-        emitProfileUpdated();
-        reset(updatedData); 
-      } catch (error) {
-        console.error('Error updating profile:', error);
-        toast.error('Failed to update profile');
-    }
+      await updateUserMutation.mutateAsync(data);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white shadow-md rounded-lg overflow-hidden max-w-2xl mx-auto p-8">
-          <Skeleton className="w-24 h-24 rounded-full mb-4" />
-          <Skeleton className="w-48 h-6 mb-2" />
-          <Skeleton className="w-64 h-4 mb-6" />
-          <Skeleton className="w-full h-10" />
-        </div>
+      <div className="container mx-auto">
+        <Card className="mx-auto max-w-2xl">
+          <CardBody className="p-8">
+            <Skeleton className="w-24 h-24 rounded-full mb-4" />
+            <Skeleton className="w-48 h-6 mb-2" />
+            <Skeleton className="w-64 h-4 mb-6" />
+            <Skeleton className="w-full h-10" />
+          </CardBody>
+        </Card>
       </div>
     );
   }
 
-  if (!isAuthenticated || !profileData) {
+  if (!isAuthenticated || !currentUser) {
     return <div>Unable to load profile data. Please try again later.</div>;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="bg-white shadow-md rounded-lg overflow-hidden max-w-2xl mx-auto">
-        <div className="p-8">
+    <div className="container mx-auto">
+      <Card className="mx-auto max-w-2xl">
+        <CardBody className="p-8">
           <h1 className="text-3xl font-bold mb-2 text-black">Profile Dashboard</h1>
           <p className="text-gray-600 mb-6">
             {isEditable ? "Customize Profile Information" : "View Profile Information"}
           </p>
+          {!isEditable && (
+            <div className="mb-6 p-4 bg-blue-50 text-blue-700 rounded-lg">
+              Note: Profile editing is only available for email/password accounts. Social login profiles are managed through their respective providers.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="flex items-center mb-6 bg-slate-100 rounded-lg p-4">
               <Avatar
                 size="lg"
-                src={profileData?.picture}
-                alt={profileData?.name}
+                src={currentUser?.picture}
+                alt={currentUser?.name}
                 className="rounded-full"
               />
               <div className="ml-4">
-                <p className="text-md font-semibold text-black">{profileData?.name}</p>
-                <p className="text-xs text-slate-400">{profileData?.email}</p>
+                <p className="text-md font-semibold text-black">{currentUser?.name}</p>
+                <p className="text-xs text-slate-400">{currentUser?.email}</p>
               </div>
             </div>
 
@@ -198,8 +198,7 @@ const ProfilePage = () => {
                         isInvalid={!!errors.given_name}
                         errorMessage={errors.given_name?.message}
                         isDisabled={!isEditable}
-                        value={field.value || ''}  // Convert null to empty string for input
-                        onChange={(e) => field.onChange(e.target.value || null)}  // Convert empty string to null
+                        value={field.value ?? ''}
                       />
                     )}
                   />
@@ -219,8 +218,7 @@ const ProfilePage = () => {
                         isInvalid={!!errors.family_name}
                         errorMessage={errors.family_name?.message}
                         isDisabled={!isEditable}
-                        value={field.value || ''}  // Convert null to empty string for input
-                        onChange={(e) => field.onChange(e.target.value || null)}  // Convert empty string to null
+                        value={field.value ?? ''}
                       />
                     )}
                   />
@@ -228,17 +226,17 @@ const ProfilePage = () => {
               )}
             </div>
 
-            {isEditable && (
-              <Button
-                type="submit"
-                className="w-full bg-black text-white"
-              >
-                Update Profile
-              </Button>
-            )}
+            <Button
+              type="submit"
+              className="w-full bg-black text-white"
+              isDisabled={!isEditable}
+              isLoading={updateUserMutation.isPending}
+            >
+              Update Profile
+            </Button>
           </form>
-        </div>
-      </div>
+        </CardBody>
+      </Card>
     </div>
   );
 };
