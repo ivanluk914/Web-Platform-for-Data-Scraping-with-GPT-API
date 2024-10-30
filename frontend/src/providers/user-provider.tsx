@@ -34,7 +34,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user?.sub || !isAuthenticated) {
         return null;
       }
-      console.log('Fetching user', user.sub);
       const response = await http.get(`/user/${user.sub}`);
       return response.data;
     },
