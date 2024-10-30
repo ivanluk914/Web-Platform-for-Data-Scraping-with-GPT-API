@@ -207,7 +207,7 @@ const TaskCreation = () => {
           localStorage.removeItem('hasCreatedTask');
           navigate('/home'); 
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error creating task:', error);
         if (error.response) {
           // The request was made and the server responded with a status code

@@ -28,11 +28,25 @@ func (s *UserService) ListUsers(ctx context.Context, page int64, pageSize int64)
 }
 
 func (s *UserService) GetUser(ctx context.Context, userID string) (*models.User, error) {
-	user, err := s.authClient.GetUser(ctx, userID)
+	user, err := models.GetUserFromCache(ctx, userID)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed to get user from cache", zap.String("user_id", userID), zap.Error(err))
+		return nil, err
+	}
+	if user != nil {
+		return user, nil
+	}
+
+	user, err = s.authClient.GetUser(ctx, userID)
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to find user", zap.String("user_id", userID), zap.Error(err))
 		return nil, err
 	}
+
+	if err := models.SetUserCache(ctx, user); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to set user in cache", zap.String("user_id", userID), zap.Error(err))
+	}
+
 	return user, nil
 }
 
@@ -42,6 +56,9 @@ func (s *UserService) UpdateUser(ctx context.Context, user *models.User) error {
 		s.logger.Ctx(ctx).Error("Failed to update user", zap.Any("user", user), zap.Error(err))
 		return err
 	}
+	if err := models.ClearUserCache(ctx, *user.ID); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to clear user from cache", zap.String("user_id", *user.ID), zap.Error(err))
+	}
 	return nil
 }
 
@@ -50,6 +67,9 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to delete user", zap.String("user_id", userID), zap.Error(err))
 		return err
+	}
+	if err := models.ClearUserCache(ctx, userID); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to clear user from cache", zap.String("user_id", userID), zap.Error(err))
 	}
 	return nil
 }
@@ -69,6 +89,9 @@ func (s *UserService) AssignUserRole(ctx context.Context, userID string, role mo
 		s.logger.Ctx(ctx).Error("Failed to assign user role", zap.String("user_id", userID), zap.String("role_id", role.String()), zap.Error(err))
 		return err
 	}
+	if err := models.ClearUserCache(ctx, userID); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to clear user from cache", zap.String("user_id", userID), zap.Error(err))
+	}
 	return nil
 }
 
@@ -77,6 +100,9 @@ func (s *UserService) RemoveUserRole(ctx context.Context, userID string, role mo
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to remove user role", zap.String("user_id", userID), zap.String("role_id", role.String()), zap.Error(err))
 		return err
+	}
+	if err := models.ClearUserCache(ctx, userID); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to clear user from cache", zap.String("user_id", userID), zap.Error(err))
 	}
 	return nil
 }

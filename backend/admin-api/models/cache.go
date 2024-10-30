@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,4 +40,40 @@ func GetTaskFromCache(ctx context.Context, taskID uint64) (*TaskDto, error) {
 	}
 
 	return &task, nil
+}
+
+func SetUserCache(ctx context.Context, user *User) error {
+	if user == nil || user.ID == nil {
+		return errors.New("user is nil or has no ID")
+	}
+
+	userJSON, err := sonic.Marshal(user)
+	if err != nil {
+		return err
+	}
+
+	// Cache the user for 1 hour
+	return redisClient.Set(ctx, fmt.Sprintf("user:%s", *user.ID), userJSON, time.Hour).Err()
+}
+
+func ClearUserCache(ctx context.Context, userID string) error {
+	return redisClient.Del(ctx, fmt.Sprintf("user:%s", userID)).Err()
+}
+
+func GetUserFromCache(ctx context.Context, userID string) (*User, error) {
+	userJSON, err := redisClient.Get(ctx, fmt.Sprintf("user:%s", userID)).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil // User not found in cache
+		}
+		return nil, err
+	}
+
+	var user User
+	err = sonic.UnmarshalString(userJSON, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

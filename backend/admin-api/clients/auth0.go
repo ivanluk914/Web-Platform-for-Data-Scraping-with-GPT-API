@@ -105,7 +105,11 @@ func (c *authClient) ListUsers(ctx context.Context, page int64, pageSize int64) 
 
 	users := make([]*models.User, 0, len(auth0Users.Users))
 	for _, user := range auth0Users.Users {
-		users = append(users, mapAuth0UserToUser(user))
+		userRoles, err := c.ListUserRoles(ctx, *user.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		users = append(users, mapAuth0UserToUser(user, userRoles))
 	}
 	return users, int64(auth0Users.Total), nil
 }
@@ -129,7 +133,11 @@ func (c *authClient) ListAllUsers(ctx context.Context) ([]*models.User, error) {
 
 	users := make([]*models.User, 0, len(auth0Users))
 	for _, user := range auth0Users {
-		users = append(users, mapAuth0UserToUser(user))
+		userRoles, err := c.ListUserRoles(ctx, *user.ID)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, mapAuth0UserToUser(user, userRoles))
 	}
 	return users, nil
 }
@@ -139,7 +147,11 @@ func (c *authClient) GetUser(ctx context.Context, userID string) (*models.User, 
 	if err != nil {
 		return nil, err
 	}
-	return mapAuth0UserToUser(user), nil
+	userRoles, err := c.ListUserRoles(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return mapAuth0UserToUser(user, userRoles), nil
 }
 
 func (c *authClient) UpdateUser(ctx context.Context, user *models.User) error {
@@ -216,7 +228,7 @@ func mapAuth0RoleToUserRole(role *management.Role) models.UserRole {
 	}
 }
 
-func mapAuth0UserToUser(user *management.User) *models.User {
+func mapAuth0UserToUser(user *management.User, roles []models.UserRole) *models.User {
 	if user == nil {
 		return nil
 	}
@@ -233,6 +245,7 @@ func mapAuth0UserToUser(user *management.User) *models.User {
 		Connection: user.Connection,
 		Location:   user.Location,
 		LastLogin:  user.LastLogin,
+		Roles:      roles,
 	}
 }
 

@@ -14,6 +14,7 @@ const Sidebar: React.FC = () => {
   const http = useHttp();
   const [userData, setUserData] = useState<UserModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { currentUser } = useUser();
 
   const fetchUserData = useCallback(async () => {
     if (isAuthenticated) {
@@ -57,10 +58,10 @@ const Sidebar: React.FC = () => {
     { name: 'Home', icon: <FiHome />, path: '/home' },
     { name: 'Task Management', icon: <FiList />, path: '/home/tasks' },
     { name: 'Create Task', icon: <FiPlusCircle />, path: '/home/create-task' },
-    { name: 'Notifications', icon: <FiBell />, path: '/home/notifications' },
     { name: 'Profile', icon: <FiUser />, path: '/home/profile' },
-    ...(userData?.roles?.includes(3) ? [{ name: 'Admin', icon: <FiSettings />, path: '/home/admin' }] : []),
-  ];
+    { name: 'Admin', icon: <FiSettings />, path: '/home/admin', roles: [UserRole.Admin] },
+  ]
+    .filter((item) => !item.roles || item.roles?.some((role) => hasRole(currentUser, role)));
 
   return (
     <aside className="w-64 bg-gray-100 flex flex-col min-h-screen">
