@@ -5,6 +5,7 @@ import UserManagement from './UserManagement';
 import TaskActions from './TaskActions';
 import HomeComponent from './Home';
 import ProtectedRoute from './RouteProtector';
+import { UserRole } from '../models/user';
 
 const Content = () => {
   return (
@@ -15,7 +16,7 @@ const Content = () => {
           <Route path="tasks/*" element={<TaskActions />} />
           <Route path="notifications" element={<h1>Notifications</h1>} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="admin" element={<ProtectedRoute requiredRoles={[3]}><UserManagement /></ProtectedRoute>} />
+          <Route path="admin" element={<ProtectedRoute requiredRoles={[UserRole.Admin]}><UserManagement /></ProtectedRoute>} />
           <Route path="create-task" element={<CreateTaskPage />} />
         </Routes>
       </div>
