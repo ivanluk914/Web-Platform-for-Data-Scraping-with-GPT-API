@@ -30,7 +30,7 @@ const Sidebar: React.FC = () => {
     <aside className="w-64 bg-gray-100 flex flex-col min-h-screen">
       <div className="flex items-center gap-2 p-4">
         <img src={logo} alt="Logo" className="w-9 h-9" />
-        <h1 className="w-full text-small font-bold uppercase opacity-100">CLAUDECOLLABORATORS</h1>
+        <h1 className="w-full text-xs font-bold uppercase opacity-100">CLAUDECOLLABORATORS</h1>
       </div>
       <div className="p-4">
         <div className="flex items-center space-x-4 mb-6">

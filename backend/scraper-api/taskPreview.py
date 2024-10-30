@@ -39,7 +39,7 @@ def get_cleaned_text(url, keywords):
     
     return {"content": cleaned_text, "images": image_urls}, 200
 
-def send_to_gpt_api(cleaned_text, image_urls, keywords, dataTypes, outputFormat):
+def send_to_gpt_api(task_name, cleaned_text, image_urls, keywords, dataTypes, outputFormat):
     """Send the JSON to GPT and expect to get results from GPT."""
     try:
         if outputFormat == 'JSON':
@@ -55,7 +55,9 @@ def send_to_gpt_api(cleaned_text, image_urls, keywords, dataTypes, outputFormat)
         if "Image URL" in dataTypes:
             image_urls_text = "\\n".join(image_urls)
 
-        prompt = f"""From the data below, extract only the first 3 matches for keywords: {keywords} in matching {dataTypes} order.
+        prompt = f"""Task Name: {task_name}
+        The task name provided by me sometimes are made up randomly which can be unrelated to the keywords and data. 
+        From the data below, extract only the first 3 matches for keywords: {keywords} in matching {dataTypes} order.
         Include relevant image URLs if applicable.
         Format the output exactly as shown below, including all \\n characters for newlines:
 
@@ -86,7 +88,7 @@ def send_to_gpt_api(cleaned_text, image_urls, keywords, dataTypes, outputFormat)
         print(f"Error communicating with GPT: {str(e)}")
         return {"error": f"Error communicating with GPT: {str(e)}"}, 500
 
-def send_review_results_to_client(source_url, keywords, dataTypes, outputFormat):
+def send_review_results_to_client(task_name, source_url, keywords, dataTypes, outputFormat):
     """Send results to the frontend."""
     # Step 1: Get cleaned text
     cleaned_text_result, status_code = get_cleaned_text(source_url, keywords)
@@ -94,7 +96,7 @@ def send_review_results_to_client(source_url, keywords, dataTypes, outputFormat)
         return jsonify(cleaned_text_result)
 
     # Step 2: Send to GPT
-    gpt_result, status_code = send_to_gpt_api(cleaned_text_result["content"], cleaned_text_result["images"], keywords, dataTypes, outputFormat)
+    gpt_result, status_code = send_to_gpt_api(task_name, cleaned_text_result["content"], cleaned_text_result["images"], keywords, dataTypes, outputFormat)
     if status_code != 200:
         return jsonify(gpt_result)
 
@@ -111,14 +113,13 @@ def send_review_results_to_client(source_url, keywords, dataTypes, outputFormat)
 @app.route('/api/<string:user_id>/task', methods=['POST'])
 def recieve_task(user_id):
     data = request.json
+    task_name = data.get('taskName')
     source_url = data.get('sourceURL')
     keywords = data.get('keywords')
     outputFormat = data.get('outputFormat')
     dataTypes = data.get('dataTypes')
-    print(f"Received task from user {user_id}: sourceURL={source_url}, keywords={keywords}, outputFormat={outputFormat}, dataTypes={dataTypes}")
-
-    # Send review results to client
-    return send_review_results_to_client(source_url, keywords, dataTypes, outputFormat)
+    print(f"Received task from user {user_id}: taskName={task_name}, sourceURL={source_url}, keywords={keywords}, outputFormat={outputFormat}, dataTypes={dataTypes}")
+    return send_review_results_to_client(task_name, source_url, keywords, dataTypes, outputFormat)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)      
+    app.run(debug=True, host='0.0.0.0', port=5001)     

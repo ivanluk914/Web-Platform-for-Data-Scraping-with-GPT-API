@@ -48,6 +48,7 @@ const TaskCreation = () => {
   const sendTaskToBackend = async () => {
     try {
       const response = await http.post(`http://localhost:5001/api/${user?.sub}/task`, {
+        taskName,
         sourceURL,
         keywords,
         dataTypes,
