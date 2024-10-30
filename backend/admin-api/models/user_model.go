@@ -42,4 +42,5 @@ type User struct {
 	Location   *string    `json:"location,omitempty"`
 	LastLogin  *time.Time `json:"last_login,omitempty"`
 	Picture    *string    `json:"picture,omitempty"`
+	Roles      []UserRole `json:"roles,omitempty"`
 }

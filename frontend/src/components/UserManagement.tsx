@@ -1,80 +1,44 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import UserTable from './UserTable';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useHttp } from '../providers/http-provider';
-import { UserService, RolesMap } from '../api/user-service';
-import { UserModel } from '../models/user';
+import { UserService } from '../api/user-service';
+import { UserModel, UserRole } from '../models/user';
 
 const UserManagement: React.FC = () => {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const http = useHttp();
   const queryClient = useQueryClient();
   const userService = new UserService(http);
 
   // Query for fetching users list
   const { data: usersData, isPending: isUsersPending } = useQuery<UserModel[]>({
-    queryKey: ['users'],
-    queryFn: () => userService.listUsers()
+    queryKey: ['users', page],
+    queryFn: () => userService.listUsers(page, pageSize),
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
   });
-
-  // Query for fetching roles for each user
-  const { data: userRoles, isPending: isRolesPending } = useQuery<RolesMap>({
-    queryKey: ['userRoles'],
-    queryFn: () => userService.getAllUserRoles(usersData || []),
-    enabled: !!usersData,
-  });
-
-  // Combine users and roles data
-  const combinedData = useMemo(() => {
-    if (!usersData || !userRoles) return [];
-    return usersData.map(user => ({
-      ...user,
-      roles: userRoles[user.user_id] || []
-    }));
-  }, [usersData, userRoles]);
 
   // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: (userId: string) => userService.deleteUser(userId),
-    onMutate: async (userId) => {
-      await queryClient.cancelQueries({ queryKey: ['users'] });
-      const previousUsers = queryClient.getQueryData<UserModel[]>(['users']);
-      
-      if (previousUsers) {
-        queryClient.setQueryData<UserModel[]>(['users'], 
-          previousUsers.filter(user => user.user_id !== userId)
-        );
-      }
-      
-      return { previousUsers };
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousUsers) {
-        queryClient.setQueryData(['users'], context.previousUsers);
-      }
+    onError: () => {
       toast.error('Failed to delete user');
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('User deleted successfully');
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    }
   });
 
   // Assign role mutation
   const assignRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: number }) => {
-      const roles = await userService.assignRole(userId, role);
-      return { userId, roles };
+    mutationFn: async ({ userId, role }: { userId: string; role: UserRole }) => {
+      await userService.assignRole(userId, role);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData<RolesMap>(['userRoles'], (oldData) => ({
-        ...oldData,
-        [data.userId]: data.roles
-      }));
+    onSuccess: async () => {
       toast.success('Role assigned successfully');
     },
     onError: () => {
@@ -85,14 +49,9 @@ const UserManagement: React.FC = () => {
   // Remove role mutation
   const removeRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: number }) => {
-      const roles = await userService.removeRole(userId, role);
-      return { userId, roles };
+      await userService.removeRole(userId, role);
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData<RolesMap>(['userRoles'], (oldData) => ({
-        ...oldData,
-        [data.userId]: data.roles
-      }));
+    onSuccess: async () => {
       toast.success('Role removed successfully');
     },
     onError: () => {
@@ -109,6 +68,7 @@ const UserManagement: React.FC = () => {
       ];
       
       await Promise.all(mutations);
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       return true;
     } catch (error) {
       console.error('Error updating roles:', error);
@@ -130,8 +90,8 @@ const UserManagement: React.FC = () => {
   return (
     <div className="user-management">
       <UserTable
-        users={combinedData}
-        isLoading={isUsersPending || isRolesPending}
+        users={usersData ?? []}
+        isLoading={isUsersPending}
         error={null}
         page={page}
         pageSize={pageSize}

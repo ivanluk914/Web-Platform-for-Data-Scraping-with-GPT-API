@@ -1,52 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Avatar, Button, Skeleton } from "@nextui-org/react";
-import { FiHome, FiPlusCircle, FiBell, FiUser, FiSettings, FiLogOut, FiList } from 'react-icons/fi';
+import { FiHome, FiPlusCircle, FiUser, FiSettings, FiLogOut, FiList } from 'react-icons/fi';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useHttp } from '../providers/http-provider';
-import { UserModel } from '../models/user';
-import { PROFILE_UPDATED_EVENT } from '../utils/events';
-import { UserService } from '../api/user-service';
+import { UserRole, hasRole } from '../models/user';
+import { useUser } from '../providers/user-provider';
 import logo from '../../public/logo.png';
 
 const Sidebar: React.FC = () => {
-  const { user, isAuthenticated, logout, getAccessTokenSilently } = useAuth0();
-  const http = useHttp();
-  const [userData, setUserData] = useState<UserModel | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { logout } = useAuth0();
+  const { currentUser, isLoading } = useUser();
 
-  const fetchUserData = useCallback(async () => {
-    if (isAuthenticated) {
-      try {
-        const token = await getAccessTokenSilently();
-        const response = await http.get(`/user/${user?.sub}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        const roles = await new UserService(http).getUserRoles(user?.sub || '');
-        setUserData({ ...response.data, roles });
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }, [isAuthenticated, getAccessTokenSilently, http]);
-
-  useEffect(() => {
-    fetchUserData();
-
-    const handleProfileUpdate = () => {
-      fetchUserData();
-    };
-
-    window.addEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdate);
-
-    return () => {
-      window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdate);
-    };
-  }, [fetchUserData]);
 
   const handleLogout = () => {
     localStorage.removeItem('hasVisitedHomePage');
@@ -57,10 +21,10 @@ const Sidebar: React.FC = () => {
     { name: 'Home', icon: <FiHome />, path: '/home' },
     { name: 'Task Management', icon: <FiList />, path: '/home/tasks' },
     { name: 'Create Task', icon: <FiPlusCircle />, path: '/home/create-task' },
-    { name: 'Notifications', icon: <FiBell />, path: '/home/notifications' },
     { name: 'Profile', icon: <FiUser />, path: '/home/profile' },
-    ...(userData?.roles?.includes(3) ? [{ name: 'Admin', icon: <FiSettings />, path: '/home/admin' }] : []),
-  ];
+    { name: 'Admin', icon: <FiSettings />, path: '/home/admin', roles: [UserRole.Admin] },
+  ]
+    .filter((item) => !item.roles || item.roles?.some((role) => hasRole(currentUser, role)));
 
   return (
     <aside className="w-64 bg-gray-100 flex flex-col min-h-screen">
@@ -80,10 +44,10 @@ const Sidebar: React.FC = () => {
             </>
           ) : (
             <>
-              <Avatar src={userData?.picture} name={userData?.name} />
+              <Avatar src={currentUser?.picture} name={currentUser?.name} />
               <div className="flex flex-col">
-                <span className="text-sm font-semibold">{userData?.name}</span>
-                <span className="text-xs text-gray-500">{userData?.email}</span>
+                <span className="text-sm font-semibold">{currentUser?.name}</span>
+                <span className="text-xs text-gray-500">{currentUser?.email}</span>
               </div>
             </>
           )}
