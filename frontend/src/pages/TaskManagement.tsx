@@ -8,6 +8,7 @@ import { MdOutlineDeleteForever, MdOutlineCancel } from "react-icons/md";
 import { GrView } from "react-icons/gr";
 import { Task, mapStatus, statusColorMap } from '../models/task';
 import { toast } from 'react-hot-toast';
+import { Card, CardBody } from "@nextui-org/react";
 
 const columns = [
   { name: "TASK NAME", uid: "taskName" },
@@ -190,60 +191,78 @@ const TaskManagement: React.FC = () => {
   if (error) return <div>{error}</div>;
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-4">Task Management</h1>
-      <Table
-        aria-label="Tasks table with custom cells"
-        >
-        <TableHeader columns={columns}>
-          {(column) => (
-            <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
-              {column.name}
-            </TableColumn>
-          )}
-        </TableHeader>
-        <TableBody items={tasks} emptyContent={<div>No tasks to display.</div>}>
-          {(item) => (
-            <TableRow key={item.id} >
-              {(columnKey) => <TableCell key={`${item.id}-${columnKey}`}>{renderCell(item, columnKey)}</TableCell>}
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">Confirm Deletion</ModalHeader>
-          <ModalBody>
-            <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="default" variant="light" onPress={() => setIsDeleteModalOpen(false)}>
-              No, Keep Task
-            </Button>
-            <Button color="danger" onPress={confirmDeleteTask}>
-              Yes, Delete Task
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+    <div className="container mx-auto">
+      <Card className="mx-auto">
+        <CardBody className="p-8">
+          <h1 className="text-3xl font-bold mb-2 text-black">Task Management</h1>
+          <p className="text-gray-600 mb-6">
+            Monitor and manage your data extraction tasks. View details, cancel running tasks, or remove completed ones.
+          </p>
+          
+          <Table
+            aria-label="Tasks table with custom cells"
+            removeWrapper
+            bottomContent={
+              <div className="flex w-full justify-center">
+                {tasks.length > 0 && (
+                  <span className="text-small text-default-400">
+                    Total {tasks.length} tasks
+                  </span>
+                )}
+              </div>
+            }
+          >
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
+                  {column.name}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody items={tasks} emptyContent={<div>No tasks to display.</div>}>
+              {(item) => (
+                <TableRow key={item.id} >
+                  {(columnKey) => <TableCell key={`${item.id}-${columnKey}`}>{renderCell(item, columnKey)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
 
-      <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)}>
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">Confirm Cancellation</ModalHeader>
-          <ModalBody>
-            <p>Are you sure you want to cancel this task? This action cannot be undone.</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="default" variant="light" onPress={() => setIsCancelModalOpen(false)}>
-              No, Keep Task
-            </Button>
-            <Button color="danger" onPress={confirmCancelTask}>
-              Yes, Cancel Task
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
+            <ModalContent>
+              <ModalHeader className="flex flex-col gap-1">Confirm Deletion</ModalHeader>
+              <ModalBody>
+                <p>Are you sure you want to delete this task? This action cannot be undone.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={() => setIsDeleteModalOpen(false)}>
+                  No, Keep Task
+                </Button>
+                <Button color="danger" onPress={confirmDeleteTask}>
+                  Yes, Delete Task
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+
+          <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)}>
+            <ModalContent>
+              <ModalHeader className="flex flex-col gap-1">Confirm Cancellation</ModalHeader>
+              <ModalBody>
+                <p>Are you sure you want to cancel this task? This action cannot be undone.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={() => setIsCancelModalOpen(false)}>
+                  No, Keep Task
+                </Button>
+                <Button color="danger" onPress={confirmCancelTask}>
+                  Yes, Cancel Task
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        </CardBody>
+      </Card>
     </div>
   );
 };

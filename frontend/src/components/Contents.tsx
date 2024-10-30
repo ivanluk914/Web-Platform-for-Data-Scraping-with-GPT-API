@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import ProfilePage from '../pages/ProfilePage';
-import AdminPage from '../pages/AdminPage';
 import CreateTaskPage from '../pages/CreateTask';
+import UserManagement from './UserManagement';
 import TaskActions from './TaskActions';
 import HomeComponent from './Home';
 
@@ -14,7 +14,7 @@ const Content = () => {
           <Route path="tasks/*" element={<TaskActions />} />
           <Route path="notifications" element={<h1>Notifications</h1>} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="admin" element={<AdminPage />} />
+          <Route path="admin" element={<UserManagement />} />
           <Route path="create-task" element={<CreateTaskPage />} />
         </Routes>
       </div>
