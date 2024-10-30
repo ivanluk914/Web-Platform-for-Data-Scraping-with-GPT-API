@@ -26,10 +26,9 @@ const LoginPage = () => {
             Welcome to Claude Collaborators. Sign in to start collaborating with your team.
           </p>
           <Button
-            color="primary"
+            className="w-full bg-[#9333ea] text-white hover:bg-[#7928ca]"
             endContent={<FiLogIn />}
             size="lg"
-            className="w-full"
             onClick={() => loginWithRedirect()}
           >
             Login / Sign Up

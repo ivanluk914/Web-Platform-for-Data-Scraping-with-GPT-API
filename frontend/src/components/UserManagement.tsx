@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { useHttp } from '../providers/http-provider';
 import { UserService } from '../api/user-service';
 import { UserModel, UserRole } from '../models/user';
+import { Card, CardBody } from '@nextui-org/react';
 
 const UserManagement: React.FC = () => {
   const [page, setPage] = useState(1);
@@ -88,20 +89,29 @@ const UserManagement: React.FC = () => {
   };
 
   return (
-    <div className="user-management">
-      <UserTable
-        users={usersData ?? []}
-        isLoading={isUsersPending}
-        error={null}
-        page={page}
-        pageSize={pageSize}
-        setPage={setPage}
-        setPageSize={setPageSize}
-        onDeleteUser={handleDeleteUser}
-        onUpdateRoles={handleRoleUpdate}
-        isDeleting={deleteUserMutation.isPending}
-        isUpdatingRoles={assignRoleMutation.isPending || removeRoleMutation.isPending}
-      />
+    <div className="container mx-auto">
+      <Card className="mx-auto">
+        <CardBody className="p-8">
+          <h1 className="text-3xl font-bold mb-2 text-black">User Management</h1>
+          <p className="text-gray-600 mb-6">
+            Manage user roles and permissions for the application.
+          </p>
+          
+          <UserTable
+            users={usersData ?? []}
+            isLoading={isUsersPending}
+            error={null}
+            page={page}
+            pageSize={pageSize}
+            setPage={setPage}
+            setPageSize={setPageSize}
+            onDeleteUser={handleDeleteUser}
+            onUpdateRoles={handleRoleUpdate}
+            isDeleting={deleteUserMutation.isPending}
+            isUpdatingRoles={assignRoleMutation.isPending || removeRoleMutation.isPending}
+          />
+        </CardBody>
+      </Card>
     </div>
   );
 };

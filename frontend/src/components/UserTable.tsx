@@ -393,6 +393,7 @@ const UserTable = ({
       classNames={{
         wrapper: "max-h-[382px]",
       }}
+      removeWrapper
       selectedKeys={selectedKeys}
       selectionMode="multiple"
       sortDescriptor={sortDescriptor}
