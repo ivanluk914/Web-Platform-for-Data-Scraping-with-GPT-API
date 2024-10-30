@@ -77,3 +77,35 @@ func GetUserFromCache(ctx context.Context, userID string) (*User, error) {
 
 	return &user, nil
 }
+
+func SetUserRolesCache(ctx context.Context, userID string, roles []UserRole) error {
+	rolesJSON, err := sonic.Marshal(roles)
+	if err != nil {
+		return err
+	}
+
+	// Cache the user roles for 1 hour
+	return redisClient.Set(ctx, fmt.Sprintf("user-roles:%s", userID), rolesJSON, time.Hour).Err()
+}
+
+func ClearUserRolesCache(ctx context.Context, userID string) error {
+	return redisClient.Del(ctx, fmt.Sprintf("user-roles:%s", userID)).Err()
+}
+
+func GetUserRolesFromCache(ctx context.Context, userID string) ([]UserRole, error) {
+	rolesJSON, err := redisClient.Get(ctx, fmt.Sprintf("user-roles:%s", userID)).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil // User roles not found in cache
+		}
+		return nil, err
+	}
+
+	var roles []UserRole
+	err = sonic.UnmarshalString(rolesJSON, &roles)
+	if err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+}

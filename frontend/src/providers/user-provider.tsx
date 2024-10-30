@@ -1,13 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { UserModel } from '../models/user';
 import { useHttp } from './http-provider';
+import { useQuery } from '@tanstack/react-query';
 
 interface UserContextType {
   currentUser: UserModel | null;
   isLoading: boolean;
   error: Error | null;
-  refreshUser: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -22,44 +22,31 @@ export const useUser = () => {
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated, isLoading: isAuth0Loading } = useAuth0();
-  const [currentUser, setCurrentUser] = useState<UserModel | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const http = useHttp();
 
-  const fetchUser = async () => {
-    if (!user?.sub || !isAuthenticated) {
-      setCurrentUser(null);
-      return;
-    }
-
-    try {
+  const {
+    data: currentUser,
+    isLoading,
+    error,
+  } = useQuery<UserModel>({
+    queryKey: ['users', user?.sub],
+    queryFn: async () => {
+      if (!user?.sub || !isAuthenticated) {
+        return null;
+      }
+      console.log('Fetching user', user.sub);
       const response = await http.get(`/user/${user.sub}`);
-      setCurrentUser(response.data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch user'));
-      setCurrentUser(null);
-    }
-  };
-
-  const refreshUser = async () => {
-    setIsLoading(true);
-    await fetchUser();
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    if (!isAuth0Loading) {
-      refreshUser();
-    }
-  }, [isAuth0Loading, isAuthenticated, user?.sub]);
+      return response.data;
+    },
+    enabled: !!user?.sub && isAuthenticated && !isAuth0Loading,
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+  });
 
   const value = {
-    currentUser,
+    currentUser: currentUser ?? null,
     isLoading: isLoading || isAuth0Loading,
-    error,
-    refreshUser
+    error: error instanceof Error ? error : null,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

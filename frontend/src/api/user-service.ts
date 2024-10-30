@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from "./apiEndPoints";
-import { UserModel } from "../models/user";
+import { UserModel, UserRole } from "../models/user";
 import { AxiosInstance } from "axios";
 
 export interface RolesMap {
@@ -9,8 +9,13 @@ export interface RolesMap {
 export class UserService {
   constructor(private http: AxiosInstance) {}
 
-  async listUsers(): Promise<UserModel[]> {
-    const response = await this.http.get(API_ENDPOINTS.LIST_USERS);
+  async listUsers(page: number, pageSize: number): Promise<UserModel[]> {
+    const response = await this.http.get(API_ENDPOINTS.LIST_USERS, {
+      // params: {
+      //   page,
+      //   pageSize
+      // }
+    });
     return response.data?.data || [];
   }
 
@@ -39,13 +44,13 @@ export class UserService {
     await this.http.delete(API_ENDPOINTS.DELETE_USER(userId));
   }
 
-  async assignRole(userId: string, role: number): Promise<number[]> {
+  async assignRole(userId: string, role: UserRole): Promise<UserRole[]> {
     await this.http.post(API_ENDPOINTS.ASSIGN_USER_ROLE(userId), { role });
     const roles = await this.getUserRoles(userId);
     return roles;
   }
 
-  async removeRole(userId: string, role: number): Promise<number[]> {
+  async removeRole(userId: string, role: UserRole): Promise<UserRole[]> {
     await this.http.delete(API_ENDPOINTS.REMOVE_USER_ROLE(userId), { data: { role } });
     const roles = await this.getUserRoles(userId);
     return roles;

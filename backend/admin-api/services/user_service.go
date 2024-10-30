@@ -7,6 +7,7 @@ import (
 
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 type UserService struct {
@@ -22,6 +23,38 @@ func (s *UserService) ListUsers(ctx context.Context, page int64, pageSize int64)
 	users, total, err := s.authClient.ListUsers(ctx, page-1, pageSize) // auth0 is 0-indexed, api is 1-indexed
 	if err != nil {
 		s.logger.Ctx(ctx).Error("Failed to list users", zap.Int64("page", page), zap.Int64("page_size", pageSize), zap.Error(err))
+		return nil, 0, err
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	for _, user := range users {
+		g.Go(func() error {
+			// Try get from cache
+			userRoles, err := models.GetUserRolesFromCache(ctx, *user.ID)
+			if err != nil {
+				return err
+			}
+			if userRoles != nil {
+				user.Roles = userRoles
+				return nil
+			}
+
+			// Else query db
+			userRoles, err = s.authClient.ListUserRoles(ctx, *user.ID)
+			if err != nil {
+				s.logger.Ctx(ctx).Error("Failed to list user roles", zap.String("user_id", *user.ID), zap.Error(err))
+				return err
+			}
+			if err := models.SetUserRolesCache(ctx, *user.ID, userRoles); err != nil {
+				s.logger.Ctx(ctx).Error("Failed to set user roles in cache", zap.String("user_id", *user.ID), zap.Error(err))
+			}
+			user.Roles = userRoles
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
 		return nil, 0, err
 	}
 	return users, total, nil
@@ -92,6 +125,9 @@ func (s *UserService) AssignUserRole(ctx context.Context, userID string, role mo
 	if err := models.ClearUserCache(ctx, userID); err != nil {
 		s.logger.Ctx(ctx).Error("Failed to clear user from cache", zap.String("user_id", userID), zap.Error(err))
 	}
+	if err := models.ClearUserRolesCache(ctx, userID); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to clear user roles from cache", zap.String("user_id", userID), zap.Error(err))
+	}
 	return nil
 }
 
@@ -103,6 +139,9 @@ func (s *UserService) RemoveUserRole(ctx context.Context, userID string, role mo
 	}
 	if err := models.ClearUserCache(ctx, userID); err != nil {
 		s.logger.Ctx(ctx).Error("Failed to clear user from cache", zap.String("user_id", userID), zap.Error(err))
+	}
+	if err := models.ClearUserRolesCache(ctx, userID); err != nil {
+		s.logger.Ctx(ctx).Error("Failed to clear user roles from cache", zap.String("user_id", userID), zap.Error(err))
 	}
 	return nil
 }

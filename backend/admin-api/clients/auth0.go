@@ -105,11 +105,7 @@ func (c *authClient) ListUsers(ctx context.Context, page int64, pageSize int64) 
 
 	users := make([]*models.User, 0, len(auth0Users.Users))
 	for _, user := range auth0Users.Users {
-		userRoles, err := c.ListUserRoles(ctx, *user.ID)
-		if err != nil {
-			return nil, 0, err
-		}
-		users = append(users, mapAuth0UserToUser(user, userRoles))
+		users = append(users, mapAuth0UserToUser(user, nil))
 	}
 	return users, int64(auth0Users.Total), nil
 }
@@ -133,11 +129,7 @@ func (c *authClient) ListAllUsers(ctx context.Context) ([]*models.User, error) {
 
 	users := make([]*models.User, 0, len(auth0Users))
 	for _, user := range auth0Users {
-		userRoles, err := c.ListUserRoles(ctx, *user.ID)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, mapAuth0UserToUser(user, userRoles))
+		users = append(users, mapAuth0UserToUser(user, nil))
 	}
 	return users, nil
 }
@@ -253,7 +245,7 @@ func mapUserToAuth0User(user *models.User) *management.User {
 	if user == nil {
 		return nil
 	}
-	
+
 	auth0User := &management.User{}
 	if user.Email != nil {
 		auth0User.Email = user.Email
@@ -276,6 +268,6 @@ func mapUserToAuth0User(user *models.User) *management.User {
 	if user.Nickname != nil {
 		auth0User.Nickname = user.Nickname
 	}
-	
+
 	return auth0User
 }

@@ -17,4 +17,4 @@ COPY backend/scraper-api/ .
 EXPOSE 5001
 
 # Command to run the application
-CMD ["python", "TaskPreview.py"]
+CMD ["python", "taskPreview.py"]
