@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Skeleton } from '@nextui-org/react';
 import { useUser } from '../providers/user-provider';
+import { hasRole } from '../models/user';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles
 
   useEffect(() => {
     if (currentUser) {
-      const hasRequiredRole = currentUser.roles?.some(role => requiredRoles.includes(role)) ?? false;
+      const hasRequiredRole = requiredRoles.some(role => hasRole(currentUser, role));
       setHasAccess(hasRequiredRole);
     } else {
       setHasAccess(false);
