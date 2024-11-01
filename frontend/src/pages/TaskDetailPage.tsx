@@ -57,7 +57,7 @@ const TaskDetailPage: React.FC = () => {
           taskDefinition: {
             // type: JSON.parse(response.data.task_definition).type,
             source: JSON.parse(response.data.task_definition).source, 
-            output: JSON.parse(response.data.task_definition).output, 
+            output: JSON.parse(response.data.task_definition).output,
             target: JSON.parse(response.data.task_definition).target, 
             period: JSON.parse(response.data.task_definition).period,
           },
@@ -121,7 +121,7 @@ const TaskDetailPage: React.FC = () => {
   };
 
   const handleDownloadResult = async () => {
-    const output = task.taskDefinition.output[0];
+    const output = task.taskDefinition.output[1];
     const data = output?.value;
     const type = output?.type;
   
