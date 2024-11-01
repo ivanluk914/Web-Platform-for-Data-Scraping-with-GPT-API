@@ -24,6 +24,7 @@ import {
   ModalFooter,
   Checkbox,
   useDisclosure,
+  Skeleton,
 } from "@nextui-org/react";
 import { BsSearch, BsThreeDotsVertical, BsChevronDown, BsDownload } from "react-icons/bs";
 import { UserModel } from "../models/user";
@@ -88,6 +89,12 @@ const UserTable = ({
     direction: "ascending",
   });
 
+  const [localUsers, setLocalUsers] = React.useState(users);
+
+  React.useEffect(() => {
+    setLocalUsers(users);
+  }, [users]);
+
   const hasSearchFilter = Boolean(filterValue);
 
   const headerColumns = React.useMemo(() => {
@@ -96,7 +103,7 @@ const UserTable = ({
   }, [visibleColumns]);
 
   const filteredItems = React.useMemo(() => {
-    let filteredUsers = [...users];
+    let filteredUsers = [...localUsers];
 
     if (hasSearchFilter) {
       filteredUsers = filteredUsers.filter((user) =>
@@ -113,7 +120,7 @@ const UserTable = ({
     }
 
     return filteredUsers;
-  }, [users, filterValue, roleFilter]);
+  }, [localUsers, filterValue, roleFilter]);
 
   const pages = Math.ceil(filteredItems.length / rowsPerPage);
 
@@ -142,6 +149,7 @@ const UserTable = ({
 
   const handleConfirmDelete = async () => {
     onDeleteUser(selectedUserId);
+    setLocalUsers(prevUsers => prevUsers.filter(user => user.user_id !== selectedUserId));
     onDeleteClose();
   };
 
@@ -214,24 +222,17 @@ const UserTable = ({
           "Never"
         );
       case "role":
-        if (!user.roles || user.roles.length === 0) return null;
+        const isAdmin = user.roles?.includes(UserRole.Admin);
+        const roleToDisplay = isAdmin ? UserRole.Admin : UserRole.User;
         return (
-          <div className="flex gap-2">
-            {user.roles
-              .filter(role => Object.values(UserRole).includes(role))
-              .sort((a, b) => b - a)
-              .map((role, index) => (
-                <Chip
-                  key={`${user.user_id}-role-${index}`}
-                  className="capitalize"
-                  size="sm"
-                  variant="flat"
-                  color={role === UserRole.Admin ? "success" : role === UserRole.Member ? "secondary" : "primary"}
-                >
-                  {UserRole[role]}
-                </Chip>
-              ))}
-          </div>
+          <Chip
+            className="capitalize"
+            size="sm"
+            variant="flat"
+            color={roleToDisplay === UserRole.Admin ? "success" : "primary"}
+          >
+            {UserRole[roleToDisplay]}
+          </Chip>
         );
       case "actions":
         return (
@@ -380,7 +381,17 @@ const UserTable = ({
     );
   }, [selectedKeys, filteredItems.length, page, pages]);
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <div className="mt-4 w-full max-w-md">
+          {[...Array(5)].map((_, index) => (
+            <Skeleton key={index} className="h-8 mb-2" />
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (error) return <div>Error: {error.message}</div>;
 
   return (

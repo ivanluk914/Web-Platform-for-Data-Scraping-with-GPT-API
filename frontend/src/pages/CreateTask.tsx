@@ -37,6 +37,7 @@ const TaskCreation = () => {
   const [dataTypes, setDataTypes] = useState(['']);
   const [content, setContent] = useState('');
   const [GPTResponse, setGPTResponse] = useState('');
+  const [fullResponse, setFullResponse] = useState('');
   const [canCreateTask, setCanCreateTask] = useState(false);
   // const [taskRunType, setTaskRunType] = useState<TaskRunType>(TaskRunType.Unknown);
   // const isPeriodicTask = taskRunType === TaskRunType.Periodic;
@@ -48,6 +49,7 @@ const TaskCreation = () => {
   const sendTaskToBackend = async () => {
     try {
       const response = await http.post(`http://localhost:5001/api/${user?.sub}/task`, {
+        taskName,
         sourceURL,
         keywords,
         dataTypes,
@@ -59,14 +61,19 @@ const TaskCreation = () => {
       });
 
       const data = response.data;
+      console.log('data', data);
       if (data.error) {
         console.error('Error from backend:', data.error);
-        setContent('🚫 Oops! They seem to know we are scraping them. Please check the URL and try again.');
+        if (data.error === "Error communicating with GPT: Error communicating with OpenAI: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))") {
+          setContent('🚫 Oops! The website is too big for us to scrape. Please try a different URL or reduce the number of keywords.');
+        } else {
+          setContent('🚫 Oops! They seem to know we are scraping them. Please check the URL and try again.');
+        }
         setCanCreateTask(false);
         return;
       }
       // console.log('GPT response:', data.gpt_response);
-      if (data.gpt_response === 'No data found') {
+      if (data.gpt_response === 'No data found' || data.gpt_response === 'No data found.') {
         setContent('🔍 No data found, please try again');
         setCanCreateTask(false);
       } else {
@@ -75,6 +82,7 @@ const TaskCreation = () => {
           .replace(/\\n/g, '\n')
           .replace(/\n/g, '\n');
         setGPTResponse(data.gpt_response);
+        setFullResponse(data.gpt_full_response);
         setContent(formattedResponse);
         setCanCreateTask(true);
       }
@@ -184,9 +192,14 @@ const TaskCreation = () => {
           })),
           output: [{ 
           type: outputTypeMap[outputFormat],
-          name: outputFormat, // Needs to be changed?
+          name: outputFormat, 
           value: GPTResponse
-        }],
+          }, 
+          {
+            type: outputTypeMap[outputFormat],
+            name: outputFormat,
+            value: fullResponse
+          }],
           // period: isPeriodicTask ? periodMap[frequencyUnit] : undefined
           // dateRange is not implemented in BE yet
           // dateRange: {
@@ -202,7 +215,7 @@ const TaskCreation = () => {
         };
 
         const response = await http.post(`/user/${user?.sub}/task`, TaskDetails);
-
+        console.log('task details', TaskDetails);
         if (response.status === 201) {
           toast.success(`Task created successfully!`);
           localStorage.removeItem('hasCreatedTask');

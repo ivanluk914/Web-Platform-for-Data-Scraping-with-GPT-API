@@ -20,7 +20,7 @@ interface MappedTask {
   taskDefinition: {
     // type: TaskRunType;
     source: { url: string }[];
-    output: { type: OutputType }[];
+    output: { type: OutputType, value: string }[];
     target: { name: string; value: string }[];
     period: TaskPeriod;
   };
@@ -57,7 +57,7 @@ const TaskDetailPage: React.FC = () => {
           taskDefinition: {
             // type: JSON.parse(response.data.task_definition).type,
             source: JSON.parse(response.data.task_definition).source, 
-            output: JSON.parse(response.data.task_definition).output, 
+            output: JSON.parse(response.data.task_definition).output,
             target: JSON.parse(response.data.task_definition).target, 
             period: JSON.parse(response.data.task_definition).period,
           },
@@ -121,24 +121,74 @@ const TaskDetailPage: React.FC = () => {
   };
 
   const handleDownloadResult = async () => {
-    // try {
-    //   const response = await axios.get(`/api/tasks/${taskId}/download`, { responseType: 'blob' });
-    //   const url = window.URL.createObjectURL(new Blob([response.data]));
-    //   const link = document.createElement('a');
-    //   link.href = url;
-    //   link.setAttribute('download', `task_${taskId}_result.${task.outputFormat.toLowerCase()}`);
-    //   document.body.appendChild(link);
-    //   link.click();
-    //   link.remove();
-    // } catch (err) {
-    //   console.error('Error downloading task result:', err);
-    //   // Handle error (e.g., show error message to user)
-    // }
-
-    // Mock download (remove this when connecting to backend)
-    console.log('Download result for task:', taskId);
-  };
-
+    const output = task.taskDefinition.output[1];
+    const data = output?.value;
+    const type = output?.type;
+  
+    if (!data || type === undefined) {
+      console.error('No data or type available for download');
+      toast.error('No data available for download.');
+      return;
+    }
+  
+    let fileType = '';
+    let fileExtension = '';
+    let fileContent = data;
+  
+    try {
+      // Unescape the data
+      const unescapedData = data.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+  
+      switch (type) {
+        case OutputType.JSON:
+          fileType = 'application/json';
+          fileExtension = 'json';
+          // Fix the JSON structure
+          let fixedData = unescapedData;
+          // Remove extra curly braces if present
+          fixedData = fixedData.trim();
+          if (fixedData.startsWith('{') && fixedData.endsWith('}')) {
+            fixedData = fixedData.substring(1, fixedData.length - 1).trim();
+          }
+          // Wrap with square brackets to form a valid JSON array
+          fixedData = `[${fixedData}]`;
+          // Parse and stringify the JSON data
+          const jsonData = JSON.parse(fixedData);
+          fileContent = JSON.stringify(jsonData, null, 2);
+          break;
+        case OutputType.CSV:
+          fileType = 'text/csv';
+          fileExtension = 'csv';
+          // Replace escaped newlines with actual newlines
+          fileContent = unescapedData.replace(/\\n/g, '\n');
+          break;
+        case OutputType.MARKDOWN:
+          fileType = 'text/markdown';
+          fileExtension = 'md';
+          // Replace escaped newlines with actual newlines
+          fileContent = unescapedData.replace(/\\n/g, '\n');
+          break;
+        default:
+          console.error('Unsupported file type');
+          toast.error('Unsupported file type.');
+          return;
+      }
+  
+      const blob = new Blob([fileContent], { type: fileType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${task.taskName || 'output'}.${fileExtension}`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error processing data:', error);
+      toast.error('Error processing data.');
+    }
+  };  
+  
   const handleAISummary = async () => {
     // try {
     //   const response = await axios.get(`/api/tasks/${taskId}/ai-summary`);
