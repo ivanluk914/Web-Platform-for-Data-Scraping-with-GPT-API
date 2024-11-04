@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardBody, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip, Spacer } from "@nextui-org/react";
+import { Card, CardBody, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip, Spacer, useDisclosure } from "@nextui-org/react";
 import { useAuth0 } from '@auth0/auth0-react';
 import { useHttp } from '../providers/http-provider';
-import { TaskStatus, OutputType, TaskPeriod, TaskRunType, mapStatus, statusColorMap } from '../models/task';
+import { TaskStatus, OutputType, TaskPeriod, mapStatus, statusColorMap } from '../models/task';
 import { toast } from 'react-hot-toast';
 import { FaChevronLeft } from 'react-icons/fa';
 import { RiSparklingFill } from 'react-icons/ri';
+
 
 interface MappedTask {
   id: string;
@@ -37,6 +38,10 @@ const TaskDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const http = useHttp();
   const [GPTResponse, setGPTResponse] = useState('');
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [backdrop, setBackdrop] = useState('opaque');
+  const backdrops = ["opaque", "blur", "transparent"];
+  const [summary, setSummary] = useState<string>('');
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -189,18 +194,20 @@ const TaskDetailPage: React.FC = () => {
     }
   };  
   
-  const handleAISummary = async () => {
-    // try {
-    //   const response = await axios.get(`/api/tasks/${taskId}/ai-summary`);
-    //   console.log('AI Summary:', response.data);
-    //   // Display AI summary to user (e.g., in a modal or new page)
-    // } catch (err) {
-    //   console.error('Error generating AI summary:', err);
-    //   // Handle error (e.g., show error message to user)
-    // }
+  const handleOpen = (backdropValue: string) => {
+    setBackdrop(backdropValue);
+    onOpen();
+  };
 
-    // Mock AI summary (remove this when connecting to backend)
-    console.log('Generate AI summary for task:', taskId);
+  const handleAISummary = () => {
+    const output = task?.taskDefinition.output[2];
+    const summaryValue = output?.value;
+    if (summaryValue) {
+      setSummary(summaryValue);
+      handleOpen('opaque');
+    } else {
+      toast.error('No summary available.');
+    }    
   };
 
   const InfoBox: React.FC<{ label: string; value: string | string[] | React.ReactNode }> = ({ label, value }) => (
@@ -231,14 +238,6 @@ const TaskDetailPage: React.FC = () => {
   const renderStatus = (status: keyof typeof TaskStatus) => {
     return <Chip color={statusColorMap[status]}>{status}</Chip>;
   };
-
-  // const renderPeriod = (taskDefinition: MappedTask['taskDefinition']) => {
-  //   if (taskDefinition.type === TaskRunType.Single) {
-  //     return "Single";
-  //   } else {
-  //     return TaskPeriod[taskDefinition.period];
-  //   }
-  // };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -277,6 +276,7 @@ const TaskDetailPage: React.FC = () => {
             <InfoBox label="URL" value={task.url} />
             <InfoBox label="Date Created" value={task.dateCreated} />
             <InfoBox label="Time Created" value={task.timeCreated} />
+            <InfoBox label="Period Type" value={TaskPeriod[task.taskDefinition.period]} />
             <InfoBox label="Output Type" value={task.taskDefinition.output[0]?.type ? OutputType[task.taskDefinition.output[0].type] : 'N/A'} />
             <InfoBox 
               label="Keywords [Data Types]" 
@@ -287,7 +287,6 @@ const TaskDetailPage: React.FC = () => {
                 />
               }
             />
-            <InfoBox label="Period Type" value={task.taskDefinition.period || 'N/A'} />
             <InfoBox 
               label="Preview Result" 
               value={<pre className="whitespace-pre-wrap text-sm">{GPTResponse}</pre>} 
@@ -349,6 +348,24 @@ const TaskDetailPage: React.FC = () => {
               Yes, Delete Task
             </Button>
           </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal backdrop="blur" isOpen={isOpen} onClose={onClose}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">AI Summary</ModalHeader>
+              <ModalBody>
+                {summary}
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Close
+                </Button>
+              </ModalFooter>
+            </>
+          )}
         </ModalContent>
       </Modal>
 
