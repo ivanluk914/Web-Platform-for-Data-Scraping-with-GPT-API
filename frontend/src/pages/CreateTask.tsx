@@ -44,7 +44,7 @@ const TaskCreation = () => {
       });
 
       const data = response.data;
-      console.log('data', data);
+      // console.log('data', data);
       if (data.error) {
         console.error('Error from backend:', data.error);
         if (data.error === "Error communicating with GPT: Error communicating with OpenAI: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))") {
@@ -155,35 +155,43 @@ const TaskCreation = () => {
             name: keyword,
             value: dataTypes[index]
           })),
-          output: [{ 
-          type: outputTypeMap[outputFormat],
-          name: outputFormat, 
-          value: GPTResponse
-          }, 
-          {
-            type: outputTypeMap[outputFormat],
-            name: outputFormat,
-            value: fullResponse
-          }],
+          output: [
+            {
+              type: outputTypeMap[outputFormat],
+              name: "preview",
+              value: GPTResponse
+            },
+            {
+              type: outputTypeMap[outputFormat],
+              name: "full",
+              value: fullResponse
+            }
+          ],
           period: taskRunType
         };
 
         const TaskDetails = {
           task_definition: taskDefinition,
           task_name: taskName,
-          deleted_at:null,
+          deleted_at: null,
+          status: 1,
         };
 
         const response = await http.post(`/user/${user?.sub}/task`, TaskDetails);
-        console.log('task details', TaskDetails);
+        // console.log('task details', TaskDetails);
         const taskId = response.data.ID;
         if (response.status === 201) {
           toast.success(`Task created successfully!`);
           localStorage.removeItem('hasCreatedTask');
           if (taskRunType === TaskPeriod.Single) {
-            await http.put(`/user/${user?.sub}/task/${taskId}`, { status: 3 });
+            TaskDetails.status = 3;
+            await http.put(`/user/${user?.sub}/task/${taskId}`, TaskDetails);
+          } else {
+            // TODO:create schedule
+            TaskDetails.status = 1;
           }
-          navigate('/home'); 
+          http.put(`http://localhost:5001/api/${user?.sub}/task/${taskId}/summary`, { TaskDetails });
+          navigate('/home');
         }
       } catch (error: any) {
         console.error('Error creating task:', error);
@@ -339,10 +347,21 @@ const TaskCreation = () => {
         {/* Title */}
         <h1 className="text-3xl font-bold mb-2 text-black">Create Task Preview</h1>
         {/* Description */}
+        <p className="text-blue-600 mb-4">
+          Note: Preview shows up to 3 results. The full task will extract all matching data.
+        </p>
+        
         <div
           className="bg-gray-100 text-black p-2 rounded-lg w-full mb-3"
           style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
-        >{sourceURL}
+        ><strong>Task Name: </strong>{taskName}
+        </div>
+
+        {/* Source URL */}
+        <div
+          className="bg-gray-100 text-black p-2 rounded-lg w-full mb-3"
+          style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
+        ><strong>Source URL: </strong>{sourceURL}
         </div>
         
         {keywords.length > 0 && keywords[0] !== '' && (
