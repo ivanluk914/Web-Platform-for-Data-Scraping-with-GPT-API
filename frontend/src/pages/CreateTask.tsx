@@ -347,10 +347,21 @@ const TaskCreation = () => {
         {/* Title */}
         <h1 className="text-3xl font-bold mb-2 text-black">Create Task Preview</h1>
         {/* Description */}
+        <p className="text-blue-600 mb-4">
+          Note: Preview shows up to 3 results. The full task will extract all matching data.
+        </p>
+        
         <div
           className="bg-gray-100 text-black p-2 rounded-lg w-full mb-3"
           style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
-        >{sourceURL}
+        ><strong>Task Name: </strong>{taskName}
+        </div>
+
+        {/* Source URL */}
+        <div
+          className="bg-gray-100 text-black p-2 rounded-lg w-full mb-3"
+          style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
+        ><strong>Source URL: </strong>{sourceURL}
         </div>
         
         {keywords.length > 0 && keywords[0] !== '' && (
