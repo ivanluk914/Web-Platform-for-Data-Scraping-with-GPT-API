@@ -420,3 +420,36 @@ func (m *MockTaskRunArtifactRepository) InsertArtifact(artifact *models.TaskRunA
 	args := m.Called(artifact)
 	return args.Error(0)
 }
+
+func TestGetAllTasks(t *testing.T) {
+	service, db, mr := setupTestService(t)
+	defer mr.Close()
+	ctx := context.Background()
+
+	t.Run("No tasks found", func(t *testing.T) {
+		tasks, err := service.GetAllTasks(ctx)
+		assert.NoError(t, err)
+		assert.Len(t, tasks, 0)
+	})
+
+	t.Run("Successful retrieval", func(t *testing.T) {
+		userId := "user1"
+		taskDefinition1 := mockTaskDefinition()
+		taskDefinition2 := mockTaskDefinition()
+		taskDefinitionJSON1, _ := sonic.Marshal(taskDefinition1)
+		taskDefinitionJSON2, _ := sonic.Marshal(taskDefinition2)
+		expectedTasks := []models.Task{
+			{Owner: userId, TaskName: "Task 1", TaskDefinition: taskDefinitionJSON1},
+			{Owner: userId, TaskName: "Task 2", TaskDefinition: taskDefinitionJSON2},
+		}
+		for _, task := range expectedTasks {
+			require.NoError(t, db.Create(&task).Error)
+		}
+
+		tasks, err := service.GetAllTasks(ctx)
+		assert.NoError(t, err)
+		assert.Len(t, tasks, 2)
+		assert.Equal(t, expectedTasks[0].TaskName, tasks[0].TaskName)
+		assert.Equal(t, expectedTasks[1].TaskName, tasks[1].TaskName)
+	})
+}
