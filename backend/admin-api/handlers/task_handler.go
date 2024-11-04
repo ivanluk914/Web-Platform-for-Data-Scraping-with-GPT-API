@@ -11,6 +11,7 @@ import (
 )
 
 type TaskService interface {
+	GetAllTasks(ctx context.Context) ([]models.TaskDto, error)
 	GetTasksByUserId(ctx context.Context, userId string) ([]models.TaskDto, error)
 	GetTaskById(ctx context.Context, taskID string) (*models.TaskDto, error)
 	CreateTask(ctx context.Context, task models.Task, userID string) (*models.Task, error)
@@ -31,6 +32,8 @@ type TaskHandler struct {
 func SetupTaskRoutes(r *gin.RouterGroup, service TaskService) {
 	handler := &TaskHandler{service: service}
 
+	r.GET("/task", handler.GetAllTasks)
+
 	userTasks := r.Group("/user/:userId/task")
 	{
 		userTasks.GET("", handler.GetTasks)
@@ -45,6 +48,16 @@ func SetupTaskRoutes(r *gin.RouterGroup, service TaskService) {
 		userTasks.GET("/:taskId/run/:runId/artifact", handler.GetTaskRunArtifacts)
 		userTasks.POST("/:taskId/run/:runId/artifact", handler.CreateTaskRunArtifact)
 	}
+}
+
+func (h *TaskHandler) GetAllTasks(c *gin.Context) {
+	tasks, err := h.service.GetAllTasks(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tasks)
 }
 
 func (h *TaskHandler) GetTasks(c *gin.Context) {

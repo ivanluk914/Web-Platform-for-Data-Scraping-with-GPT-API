@@ -10,6 +10,23 @@
 			"name": "Tasks",
 			"item": [
 				{
+					"name": "All Tasks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/task",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"task"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Tasks",
 					"request": {
 						"method": "GET",

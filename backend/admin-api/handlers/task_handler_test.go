@@ -22,6 +22,14 @@ type MockTaskService struct {
 	mock.Mock
 }
 
+func (m *MockTaskService) GetAllTasks(ctx context.Context) ([]models.TaskDto, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.TaskDto), args.Error(1)
+}
+
 func (m *MockTaskService) GetTasksByUserId(ctx context.Context, userId string) ([]models.TaskDto, error) {
 	args := m.Called(ctx, userId)
 	return args.Get(0).([]models.TaskDto), args.Error(1)
@@ -470,6 +478,70 @@ func TestDeleteTask(t *testing.T) {
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			assert.Equal(t, tt.expectedBody, w.Body.String())
+
+			mockService.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGetAllTasks(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name           string
+		setupMock      func(*MockTaskService)
+		expectedStatus int
+		expectedBody   interface{}
+	}{
+		{
+			name: "Success",
+			setupMock: func(m *MockTaskService) {
+				tasks := []models.TaskDto{
+					{ID: "1", TaskName: "Task 1"},
+					{ID: "2", TaskName: "Task 2"},
+				}
+				m.On("GetAllTasks", mock.Anything).Return(tasks, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody: []models.TaskDto{
+				{ID: "1", TaskName: "Task 1"},
+				{ID: "2", TaskName: "Task 2"},
+			},
+		},
+		{
+			name: "Internal Server Error",
+			setupMock: func(m *MockTaskService) {
+				m.On("GetAllTasks", mock.Anything).Return(nil, errors.New("database error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   gin.H{"error": "database error"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			mockService := new(MockTaskService)
+			tt.setupMock(mockService)
+			handler := &TaskHandler{service: mockService}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request, _ = http.NewRequest(http.MethodGet, "/tasks", nil)
+
+			// Execute
+			handler.GetAllTasks(c)
+
+			// Assert
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			var response interface{}
+			err := sonic.Unmarshal(w.Body.Bytes(), &response)
+			assert.NoError(t, err)
+
+			expectedJSON, _ := sonic.Marshal(tt.expectedBody)
+			actualJSON, _ := sonic.Marshal(response)
+			assert.JSONEq(t, string(expectedJSON), string(actualJSON))
 
 			mockService.AssertExpectations(t)
 		})

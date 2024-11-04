@@ -123,6 +123,15 @@ type Task struct {
 	AirflowTaskId  string          `json:"airflow_task_id"`
 }
 
+func GetAllTasks(ctx context.Context) ([]Task, error) {
+	var tasks []Task
+	result := db.WithContext(ctx).Find(&tasks)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return tasks, nil
+}
+
 func GetTasksByUserId(ctx context.Context, uid string) ([]Task, error) {
 	var tasks []Task
 	result := db.WithContext(ctx).Where("owner = ?", uid).Find(&tasks)
