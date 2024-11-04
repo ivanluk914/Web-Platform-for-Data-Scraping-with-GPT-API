@@ -41,16 +41,12 @@ def get_cleaned_text(url, keywords):
 def extract_preview_response(gpt_response, outputFormat):
     """Extract the first three results from the GPT response based on the output format."""
     if outputFormat == 'JSON':
-        # Split by the pattern that separates JSON objects
         results = gpt_response.split('},\\n    {')
     elif outputFormat == 'CSV':
-        # Split by newlines, assuming each line is a result
         results = gpt_response.split('\\n')
     elif outputFormat == 'MARKDOWN':
-        # Split by newlines, assuming each line is a result
         results = gpt_response.split('\\n')
     
-    # Extract the first three results
     if outputFormat == 'MARKDOWN':
         preview_results = results[:5]
     elif outputFormat == 'JSON':
@@ -58,7 +54,6 @@ def extract_preview_response(gpt_response, outputFormat):
     elif outputFormat == 'CSV':
         preview_results = results[:4]
     
-    # Join them back into a string
     if outputFormat == 'JSON':
         preview_response = '},\\n    {'.join(preview_results)
         preview_response += '}\\n}'
@@ -124,7 +119,6 @@ def send_to_gpt_api(task_name, cleaned_text, image_urls, keywords, dataTypes, ou
         else:
             preview_response = extract_preview_response(gpt_response, outputFormat)
 
-        # Full response for storage
         full_response = gpt_response
 
         return {"preview_response": preview_response, "full_response": full_response}, 200
