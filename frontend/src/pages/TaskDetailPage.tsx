@@ -287,6 +287,7 @@ const TaskDetailPage: React.FC = () => {
                 />
               }
             />
+            <InfoBox label="Period Type" value={task.taskDefinition.period || 'N/A'} />
             <InfoBox 
               label="Preview Result" 
               value={<pre className="whitespace-pre-wrap text-sm">{GPTResponse}</pre>} 
