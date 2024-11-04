@@ -47,6 +47,8 @@ type TaskPeriod int64
 
 const (
 	TaskPeriodUnknown TaskPeriod = iota
+	TaskPeriodSingle
+	TaskPeriodMinutely
 	TaskPeriodHourly
 	TaskPeriodDaily
 	TaskPeriodWeekly
