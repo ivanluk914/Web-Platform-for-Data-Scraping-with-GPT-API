@@ -14,13 +14,10 @@ CORS(app)
 
 def get_auth0_token():
     """Get Auth0 token for service-to-service communication"""
-    domain = os.getenv('AUTH0_DOMAIN')
+    domain = 'dev-dp4vp0xpt7cspfcl.us.auth0.com'
     client_id = os.getenv('AUTH0_CLIENT_ID')
-    client_secret = os.getenv('AUTH0_CLIENT_SECRET')
-        
-    if not audience.startswith('https://'):
-        audience = f'https://{domain}'
-    audience += '/api/v2/'
+    client_secret = os.getenv('AUTH0_CLIENT_SECRET')        
+    audience = f'https://{domain}/api/v2/'
 
     try:
         get_token = GetToken(domain, client_id, client_secret=client_secret)
