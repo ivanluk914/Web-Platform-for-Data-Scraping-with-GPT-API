@@ -22,8 +22,6 @@ const UserManagement: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  console.log(usersData);
-
   // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: (userId: string) => userService.deleteUser(userId),
