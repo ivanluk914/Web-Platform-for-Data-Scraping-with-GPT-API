@@ -6,21 +6,45 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 import openai
 from auth0.authentication import GetToken
+import logging
+import schedule
+import time
+from threading import Thread
+from threading import Event
+
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+scheduler_thread = None
+stop_event = Event()
+
+def initialize_scheduler():
+    global scheduler_thread
+    if scheduler_thread is None:
+        scheduler_thread = Thread(target=run_schedule)
+        logging.info("Starting scheduler thread")
+        scheduler_thread.daemon = True  # This ensures the thread stops when the main program stops
+        scheduler_thread.start()
+
+def run_schedule():
+    while not stop_event.is_set():
+        #logging.info("Running schedule loop")
+        schedule.run_pending()
+        time.sleep(1)
 
 def get_auth0_token():
     """Get Auth0 token for service-to-service communication"""
-    domain = os.getenv('AUTH0_DOMAIN')
+    domain = 'dev-dp4vp0xpt7cspfcl.us.auth0.com'
     client_id = os.getenv('AUTH0_CLIENT_ID')
     client_secret = os.getenv('AUTH0_CLIENT_SECRET')
-        
-    if not audience.startswith('https://'):
-        audience = f'https://{domain}'
-    audience += '/api/v2/'
+    audience = f'https://{domain}/api/v2/'
 
     try:
         get_token = GetToken(domain, client_id, client_secret=client_secret)
@@ -44,20 +68,20 @@ def get_cleaned_text(url, keywords):
     if response.status_code != 200:
         print(f"Failed to retrieve the page. Status code: {response.status_code}")
         return {"error": "Failed to retrieve the page."}, 500
-    
+
     soup = BeautifulSoup(response.content, 'html.parser')
-    
+
     image_urls = [
-        img['src'] for img in soup.find_all('img') 
+        img['src'] for img in soup.find_all('img')
     ]
-    
+
     for script in soup(["script", "style", "header", "footer", "nav", "aside"]):
         script.decompose()
-    
+
     text = soup.get_text(separator="\n")
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     cleaned_text = "\n".join(lines)
-    
+
     return {"content": cleaned_text, "images": image_urls}, 200
 
 
@@ -69,20 +93,20 @@ def extract_preview_response(gpt_response, outputFormat):
         results = gpt_response.split('\\n')
     elif outputFormat == 'MARKDOWN':
         results = gpt_response.split('\\n')
-    
+
     if outputFormat == 'MARKDOWN':
         preview_results = results[:5]
     elif outputFormat == 'JSON':
         preview_results = results[:3]
     elif outputFormat == 'CSV':
         preview_results = results[:4]
-    
+
     if outputFormat == 'JSON':
         preview_response = '},\\n    {'.join(preview_results)
         preview_response += '}\\n}'
     else:
         preview_response = '\\n'.join(preview_results)
-    
+
     return preview_response
 
 
@@ -106,28 +130,28 @@ def send_to_gpt_api(task_name, cleaned_text, image_urls, keywords, dataTypes, ou
             gpt_model = "gpt-4o-mini-2024-07-18"
             max_tokens = 6000
             number = "20"
-            
+
         prompt = f"""Task Name: {task_name}
-        The task name provided by me sometimes are made up randomly which can be unrelated to the keywords and data. 
+        The task name provided by me sometimes are made up randomly which can be unrelated to the keywords and data.
         From the data below, extract {number} matches for keywords: {keywords} in matching {dataTypes} order.
         Format the output exactly as shown below, including all \\n characters for newlines:
 
         {format_template}
-        
+
         Use the {outputFormat} format and include all \\n characters exactly as shown.
         In your response, do not include any other text, including the word "{outputFormat}:" and \'\'\'.
         Only if there is no relevant data, return 'No data found'.
         Data: {cleaned_text}"""
-        
+
         if "Image URL" in dataTypes:
             image_urls_text = "\n".join(image_urls)
             prompt += f"\nImage URLs: {image_urls_text}"
-                
+
         response = openai.ChatCompletion.create(
-            model=gpt_model, 
+            model=gpt_model,
             messages=[
                 {
-                    "role": "system", 
+                    "role": "system",
                     "content": "You are a datascraper that formats data with explicit \\n characters for newlines. Never remove these characters."
                 },
                 {"role": "user", "content": prompt}
@@ -135,7 +159,7 @@ def send_to_gpt_api(task_name, cleaned_text, image_urls, keywords, dataTypes, ou
             max_tokens=max_tokens,
             timeout=80
         )
-        
+
         gpt_response = response.choices[0].message.content.strip()
 
         if gpt_response == 'No data found' or gpt_response == 'No data found.':
@@ -149,7 +173,7 @@ def send_to_gpt_api(task_name, cleaned_text, image_urls, keywords, dataTypes, ou
     except Exception as e:
         print(f"Error communicating with GPT: {str(e)}")
         return {"error": f"Error communicating with GPT: {str(e)}"}, 500
-    
+
 
 def send_review_results_to_client(task_name, source_url, keywords, dataTypes, outputFormat):
     """Send results to the frontend."""
@@ -162,19 +186,19 @@ def send_review_results_to_client(task_name, source_url, keywords, dataTypes, ou
     gpt_result, status_code = send_to_gpt_api(task_name, cleaned_text_result["content"], cleaned_text_result["images"], keywords, dataTypes, outputFormat)
     if status_code != 200:
         return jsonify(gpt_result)
-    
+
     # Step 3: Respond back to the frontend
     return jsonify({
         'message': 'Task received successfully',
         'cleaned_text': cleaned_text_result["content"],
         'keywords': keywords,
-        'dataTypes': dataTypes,        
+        'dataTypes': dataTypes,
         'gpt_response': gpt_result["preview_response"],
         'gpt_full_response': gpt_result["full_response"],
         'outputFormat': outputFormat
     }), 200
-   
-    
+
+
 def get_gpt_summary(full_response):
     """Get the summary of the GPT response."""
     try:
@@ -185,16 +209,16 @@ def get_gpt_summary(full_response):
                 {"role": "system", "content": "You are a summarization assistant."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000
+            max_tokens=1500
         )
-        
+
         summary = response.choices[0].message.content.strip()
         return {"summary": summary}, 200
     except Exception as e:
         print(f"Error communicating with GPT: {str(e)}")
         return {"error": f"Error communicating with GPT: {str(e)}"}, 500
-    
-    
+
+
 def update_task(user_id, task_id, TaskDetails):
     """Update the task with TaskDetials."""
     try:
@@ -203,7 +227,7 @@ def update_task(user_id, task_id, TaskDetails):
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        
+
         response = requests.put(url, json=TaskDetails, headers=headers)
         if response.status_code != 200:
             print(f"Failed to update task. Status: {response.status_code}, Response: {response.text}")
@@ -212,6 +236,142 @@ def update_task(user_id, task_id, TaskDetails):
     except Exception as e:
         print(f"Error updating task: {str(e)}")
         return {"error": f"Error updating task: {str(e)}"}, 500
+
+
+@app.route('/api/<string:user_id>/task/<string:task_id>', methods=['PUT'])
+def schedule_task(user_id, task_id):
+    """Schedule a task based on the task's period."""
+    data = request.json
+    TaskDetails = data.get('TaskDetails', {})
+    task_definition = TaskDetails.get('task_definition', {})
+    print(f"task_definition: {task_definition}")
+    task_name = TaskDetails.get('task_name', '')
+    output = task_definition.get('output', [])
+    source_url = task_definition.get('source', [])[0].get('url', '')
+    keywords = [target.get('name', '') for target in task_definition.get('target', [])]
+    dataTypes = [target.get('value', '') for target in task_definition.get('target', [])]
+    outputFormat = output[0].get('type', 0)
+    schedule_type = task_definition.get('period', 0)
+    print(f"schedule_type: {schedule_type}")
+    print(f"outputFormat: {outputFormat}")
+
+    # Add output format mapping
+    outputFormatMap = {
+        1: 'JSON',
+        2: 'CSV',
+        4: 'MARKDOWN'
+    }
+
+    # Convert numeric output format to string
+    outputFormatStr = outputFormatMap.get(outputFormat)
+    if not outputFormatStr:
+        return jsonify({"error": f"Invalid output format: {outputFormat}"}), 400
+
+    def job():
+        with app.app_context():
+            logging.info(f"Executing scheduled job for task {task_id}")
+            try:
+                logging.info(f"Fetching data from URL: {source_url}")
+                response = send_review_results_to_client(task_name, source_url, keywords, dataTypes, outputFormatStr)
+
+                if isinstance(response, tuple):
+                    result = response[0].get_json()
+                    status_code = response[1]
+                else:
+                    result = response.get_json()
+                    status_code = 200
+
+                logging.info(f"Response received with status code: {status_code}")
+
+                if status_code != 200:
+                    logging.error(f"Error response: {result}")
+                    TaskDetails['status'] = 4
+                    update_task(user_id, task_id, TaskDetails)
+                    schedule.clear(f"task_{task_id}")
+                    return
+
+                if 'error' in result:
+                    logging.error(f"GPT error: {result['error']}")
+                    TaskDetails['status'] = 4
+                    update_task(user_id, task_id, TaskDetails)
+                    schedule.clear(f"task_{task_id}")
+                    return
+
+                logging.info("Updating task definition output")
+                # Initialize output array if it doesn't exist
+                if 'output' not in TaskDetails['task_definition']:
+                    TaskDetails['task_definition']['output'] = []
+
+                # Ensure we have at least 2 elements in the output array
+                while len(TaskDetails['task_definition']['output']) < 2:
+                    TaskDetails['task_definition']['output'].append({})
+
+                # Update the full response
+                TaskDetails['task_definition']['output'][1] = {
+                    "type": 2,
+                    "name": "full_response",
+                    "value": result['gpt_full_response']
+                }
+
+                logging.info("Updating task with new response")
+                update_response = update_task(user_id, task_id, TaskDetails)
+                logging.info(f"Task update response: {update_response}")
+
+                # Get the summary
+                logging.info("Generating summary")
+                gpt_summary, status_code = get_gpt_summary(result['gpt_full_response'])
+                if status_code != 200:
+                    logging.error(f"Error getting summary: {gpt_summary}")
+                    return
+
+                # Ensure we have space for the summary
+                while len(TaskDetails['task_definition']['output']) < 3:
+                    TaskDetails['task_definition']['output'].append({})
+
+                # Update the summary
+                TaskDetails['task_definition']['output'][2] = {
+                    "type": 3,
+                    "name": "summary",
+                    "value": gpt_summary["summary"]
+                }
+
+                logging.info("Updating task with summary")
+                final_update = update_task(user_id, task_id, TaskDetails)
+                logging.info(f"Final update response: {final_update}")
+
+            except Exception as e:
+                logging.error(f"Error in scheduled job: {str(e)}")
+                if 'result' in locals():
+                    logging.error(f"Response data: {result}")
+                TaskDetails['status'] = 4
+                update_task(user_id, task_id, TaskDetails)
+                schedule.clear(f"task_{task_id}")
+
+    if schedule_type == 2:
+        print("Scheduling minutely")
+        schedule.every().minute.do(job).tag(f"task_{task_id}")
+    elif schedule_type == 3:
+        print("Scheduling hourly")
+        schedule.every().hour.do(job).tag(f"task_{task_id}")
+    elif schedule_type == 4:
+        print("Scheduling daily")
+        schedule.every().day.do(job).tag(f"task_{task_id}")
+    elif schedule_type == 5:
+        print("Scheduling weekly")
+        schedule.every().week.do(job).tag(f"task_{task_id}")
+    elif schedule_type == 6:
+        print("Scheduling monthly")
+        schedule.every().month.do(job).tag(f"task_{task_id}")
+    else:
+        return jsonify({"error": f"Invalid schedule type: {schedule_type}"}), 400
+
+    # Initialize the scheduler if it's not already running
+    initialize_scheduler()
+
+    # Run the job immediately for the first time
+    job()
+
+    return jsonify({"message": "Task scheduled successfully"}), 200
 
 
 @app.route('/api/<string:user_id>/task', methods=['POST'])
@@ -223,7 +383,7 @@ def scrap_task(user_id):
     outputFormat = data.get('outputFormat')
     dataTypes = data.get('dataTypes')
     print(f"Preview request from user {user_id}: taskName={task_name}, sourceURL={source_url}, keywords={keywords}, outputFormat={outputFormat}, dataTypes={dataTypes}")
-    return send_review_results_to_client(task_name, source_url, keywords, dataTypes, outputFormat)  
+    return send_review_results_to_client(task_name, source_url, keywords, dataTypes, outputFormat)
 
 
 @app.route('/api/<string:user_id>/task/<string:task_id>/summary', methods=['PUT'])
@@ -247,5 +407,15 @@ def update_task_summary(user_id, task_id):
     response, status_code = update_task(user_id, task_id, TaskDetails)
     return jsonify(response), status_code
 
+# When the application starts
+initialize_scheduler()
+
+def cleanup():
+    stop_event.set()
+    if scheduler_thread:
+        scheduler_thread.join()
+    schedule.clear()
+    logging.info("Scheduler thread joined and jobs cleared")
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)     
+    app.run(debug=True, host='0.0.0.0', port=5001)
