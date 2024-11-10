@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tab, Tabs } from '@nextui-org/react';
 import UserManagement from '../components/UserManagement';
+import TaskManagement from '../components/TaskManagement';
 
 const AdminPage: React.FC = () => {
   return (
@@ -9,11 +10,9 @@ const AdminPage: React.FC = () => {
         <Tab key="user_management" title="User Management">
           <UserManagement />
         </Tab>
-        <Tab key="placeholder_tab_1" title="Placeholder Tab 1">
+        <Tab key="task_management" title="Task Management">
           {/* Future development */}
-        </Tab>
-        <Tab key="placeholder_tab_2" title="Placeholder Tab 2">
-          {/* Future development */}
+          <TaskManagement />
         </Tab>
       </Tabs>
     </div>
@@ -21,6 +20,3 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
-
-
-
