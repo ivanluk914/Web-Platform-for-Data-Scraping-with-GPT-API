@@ -72,8 +72,8 @@ def get_cleaned_text(url, keywords):
     soup = BeautifulSoup(response.content, 'html.parser')
 
     image_urls = [
-        img['src'] for img in soup.find_all('img')
-    ]
+    img.get('src') for img in soup.find_all('img') if img.get('src') is not None
+]
 
     for script in soup(["script", "style", "header", "footer", "nav", "aside"]):
         script.decompose()
@@ -331,11 +331,7 @@ def schedule_task(user_id, task_id):
                     TaskDetails['task_definition']['output'].append({})
 
                 # Update the full response
-                TaskDetails['task_definition']['output'][1] = {
-                    "type": 2,
-                    "name": "full_response",
-                    "value": result['gpt_full_response']
-                }
+                TaskDetails['task_definition']['output'][1]["value"] = result['gpt_full_response']
 
                 logging.info("Updating task with new response")
                 update_response = update_task(user_id, task_id, TaskDetails)
@@ -431,7 +427,6 @@ def update_task_summary(user_id, task_id):
     response, status_code = update_task(user_id, task_id, TaskDetails)
     return jsonify(response), status_code
 
-
 @app.route('/api/<string:user_id>/task/<string:task_id>/cancel', methods=['PUT'])
 def cancel_task(user_id, task_id):
     """Cancel a scheduled task."""
@@ -452,7 +447,6 @@ def cancel_task(user_id, task_id):
     except Exception as e:
         logging.error(f"Error cancelling task: {str(e)}")
         return jsonify({"error": f"Error cancelling task: {str(e)}"}), 500
-
 
 # When the application starts
 initialize_scheduler()
