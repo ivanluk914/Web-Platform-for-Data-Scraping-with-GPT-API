@@ -267,10 +267,34 @@ def schedule_task(user_id, task_id):
     if not outputFormatStr:
         return jsonify({"error": f"Invalid output format: {outputFormat}"}), 400
 
+    def get_task_status(user_id, task_id):
+        """Get current task status from admin API."""
+        try:
+            url = f"http://admin-api:8080/api/user/{user_id}/task/{task_id}"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            }
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            logging.error(f"Failed to get task status. Status: {response.status_code}, Response: {response.text}")
+            return None
+        except Exception as e:
+            logging.error(f"Error getting task status: {str(e)}")
+            return None
+
     def job():
         with app.app_context():
             logging.info(f"Executing scheduled job for task {task_id}")
             try:
+                # Check if task is cancelled
+                current_task = get_task_status(user_id, task_id)
+                if current_task and current_task.get('status') == 5:  # 5 is TaskStatus.canceled
+                    logging.info(f"Task {task_id} is cancelled, clearing schedule")
+                    schedule.clear(f"task_{task_id}")
+                    return
+
                 logging.info(f"Fetching data from URL: {source_url}")
                 response = send_review_results_to_client(task_name, source_url, keywords, dataTypes, outputFormatStr)
 
@@ -406,6 +430,29 @@ def update_task_summary(user_id, task_id):
     })
     response, status_code = update_task(user_id, task_id, TaskDetails)
     return jsonify(response), status_code
+
+
+@app.route('/api/<string:user_id>/task/<string:task_id>/cancel', methods=['PUT'])
+def cancel_task(user_id, task_id):
+    """Cancel a scheduled task."""
+    try:
+        # Get current task details
+        current_task = get_task_status(user_id, task_id)
+        if current_task:
+            # Update task status to cancelled (5)
+            current_task['status'] = 5
+            update_task(user_id, task_id, current_task)
+
+            # Clear the schedule
+            schedule.clear(f"task_{task_id}")
+            logging.info(f"Task {task_id} cancelled and schedule cleared")
+            return jsonify({"message": "Task cancelled successfully"}), 200
+        else:
+            return jsonify({"error": "Task not found"}), 404
+    except Exception as e:
+        logging.error(f"Error cancelling task: {str(e)}")
+        return jsonify({"error": f"Error cancelling task: {str(e)}"}), 500
+
 
 # When the application starts
 initialize_scheduler()
