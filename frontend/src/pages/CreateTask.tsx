@@ -85,7 +85,7 @@ const TaskCreation = () => {
     const areKeywordsFilled = validateNonEmptyArray(keywords);
     const areDataTypesFilled = validateNonEmptyArray(dataTypes);
     const isURLValid = validateURL(sourceURL);
-    
+
     if (taskName === '' || !sourceURL || !areKeywordsFilled || !areDataTypesFilled || !outputFormat || !taskRunType) {
     toast.error('Please fill in all required fields before proceeding.');
       return;
@@ -109,7 +109,7 @@ const TaskCreation = () => {
 
   const handleDataTypeChange = (index: number, value: string) => {
     const updatedDataTypes = [...dataTypes];
-    updatedDataTypes[index] = value; 
+    updatedDataTypes[index] = value;
     setDataTypes(updatedDataTypes);
   };
 
@@ -118,22 +118,22 @@ const TaskCreation = () => {
     setKeywords((prevKeywords) => [...prevKeywords, '']);
     setDataTypes((prevDataTypes) => [...prevDataTypes, '']);
   };
-  
+
   const removeField = (index: number) => {
     //del function forset datatypes and key words
     if (keywords.length > 1 && dataTypes.length > 1) {
       const updatedKeywords = [...keywords];
       const updatedDataTypes = [...dataTypes];
-      
+
       updatedKeywords.splice(index, 1);
       updatedDataTypes.splice(index, 1);
-    
+
       setKeywords(updatedKeywords);
       setDataTypes(updatedDataTypes);
     }
   };
 
-// preview page 
+// preview page
   useEffect(() => {
   }, [isVisible]);
 
@@ -177,9 +177,10 @@ const TaskCreation = () => {
           status: 1,
         };
 
-        const response = await http.post(`/user/${user?.sub}/task`, TaskDetails);
+        const response = await http.post(`/user/${user?.sub}/task`, TaskDetails); // to admin-api
         // console.log('task details', TaskDetails);
         const taskId = response.data.ID;
+        // task is created successfully
         if (response.status === 201) {
           toast.success(`Task created successfully!`);
           localStorage.removeItem('hasCreatedTask');
@@ -189,6 +190,7 @@ const TaskCreation = () => {
           } else {
             // TODO:create schedule
             TaskDetails.status = 1;
+            http.put(`http://localhost:5001/api/${user?.sub}/task/${taskId}`, { TaskDetails });
           }
           http.put(`http://localhost:5001/api/${user?.sub}/task/${taskId}/summary`, { TaskDetails });
           navigate('/home');
@@ -238,12 +240,12 @@ const TaskCreation = () => {
           {/* Source URL Field */}
           <div className="mb-5">
             <Input
-              type="URL" 
+              type="URL"
               label="Source URL"
               placeholder="e.g https://abc.com.au"
-              value={sourceURL} 
-              onChange={(e) => setSourceURL(e.target.value)} 
-              style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }} 
+              value={sourceURL}
+              onChange={(e) => setSourceURL(e.target.value)}
+              style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
             />
           </div>
           <div className="space-y-3">
@@ -290,7 +292,7 @@ const TaskCreation = () => {
                 </div>
               </div>
             ))}
-            
+
             {/* Add New Button */}
             <Button
               type="button"
@@ -312,7 +314,7 @@ const TaskCreation = () => {
               placeholder="Select an output format"
               className="max-w-xs"
               defaultItems={form1}
-              onSelectionChange={(value) => setOutputFormat(value)} 
+              onSelectionChange={(value) => setOutputFormat(value)}
             >
               {(item) => <AutocompleteItem key={item.label}>{item.value}</AutocompleteItem>}
             </Autocomplete>
@@ -336,7 +338,7 @@ const TaskCreation = () => {
           >
             {(item) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
           </Autocomplete>
-        </div>  
+        </div>
 
           {/* Update Profile Button */}
           <Button type="submit" className="w-36 bg-black text-white" onClick={previewButton}>
@@ -350,7 +352,7 @@ const TaskCreation = () => {
         <p className="text-blue-600 mb-4">
           Note: Preview shows up to 3 results. The full task will extract all matching data.
         </p>
-        
+
         <div
           className="bg-gray-100 text-black p-2 rounded-lg w-full mb-3"
           style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
@@ -363,13 +365,13 @@ const TaskCreation = () => {
           style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
         ><strong>Source URL: </strong>{sourceURL}
         </div>
-        
+
         {keywords.length > 0 && keywords[0] !== '' && (
           <div>
           <div className="bg-gray-100 text-black p-1 rounded-lg w-full mb-3" style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}>
           <strong>Keywords:</strong>
             {keywords.map((item, index) => (
-              <Chip 
+              <Chip
                 key={index}
                 variant="flat"
                 color="primary"
@@ -393,8 +395,8 @@ const TaskCreation = () => {
         <div className="mt-4">
           <pre
             className="bg-gray-100 text-black p-2 rounded-lg w-full whitespace-pre-wrap"
-            style={{ 
-              backgroundColor: '#E5E7EB', 
+            style={{
+              backgroundColor: '#E5E7EB',
               color: '#1F2937',
               fontFamily: 'inherit'
             }}
