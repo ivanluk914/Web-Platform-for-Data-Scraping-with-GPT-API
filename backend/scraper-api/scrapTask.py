@@ -330,7 +330,8 @@ def schedule_task(user_id, task_id):
                 while len(TaskDetails['task_definition']['output']) < 2:
                     TaskDetails['task_definition']['output'].append({})
 
-                # Update the full response
+                # Update the preview + full response
+                TaskDetails['task_definition']['output'][0]["value"] = result['gpt_response']
                 TaskDetails['task_definition']['output'][1]["value"] = result['gpt_full_response']
 
                 logging.info("Updating task with new response")
