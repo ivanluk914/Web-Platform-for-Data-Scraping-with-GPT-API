@@ -296,25 +296,27 @@ const TaskDetailPage: React.FC = () => {
       </Card>
 
       <div className="flex justify-end gap-4">
-        {(task.status === "created" || task.status === "running") && (
+        {(task.status === "created" || task.status === "running" || task.status === "pending") && (
           <Button color="danger" variant="flat" className="hover:opacity-80" onClick={() => setIsCancelModalOpen(true)}>
             Cancel Task
           </Button>
         )}
-        {(task.status === "canceled" || task.status === "completed") && (
+        {(task.status === "canceled" || task.status === "completed" || task.status === "failed") && (
           <Button color="danger" variant="flat" className="hover:opacity-80" onClick={() => setIsDeleteModalOpen(true)}>
             Delete Task
           </Button>
         )}
-        {(task.status === "created" || task.status === "completed") && (
+        {(task.status === "created" || task.status === "completed" || task.status === "failed" || task.status === "canceled") && (
           <Button color="primary" variant="flat" className="hover:opacity-80" onClick={handleDownloadResult}>
             Download Result
           </Button>
         )}
-        <Button color="secondary" variant="flat" className="hover:opacity-80 flex items-center" onClick={handleAISummary}>
-          <RiSparklingFill className="mr-0" />
-          AI Summary
-        </Button>
+        {task.status !== "pending" && (
+          <Button color="secondary" variant="flat" className="hover:opacity-80 flex items-center" onClick={handleAISummary}>
+            <RiSparklingFill className="mr-0" />
+            AI Summary
+          </Button>
+        )}
       </div>
 
       <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)}>

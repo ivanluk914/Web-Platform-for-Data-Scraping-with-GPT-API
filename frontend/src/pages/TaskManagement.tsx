@@ -167,7 +167,7 @@ const TaskManagement: React.FC = () => {
                 <GrView />
               </span>
             </Tooltip>
-            {task.status === "canceled" || task.status === "completed" ? (
+            {task.status === "canceled" || task.status === "completed" || task.status === "failed" ? (
               <Tooltip color="danger" content="Delete Task" delay={0} closeDelay={0} size="sm">
                 <span className="text-lg text-danger cursor-pointer active:opacity-50" onClick={() => handleDeleteTask(task.id)}>
                   <MdOutlineDeleteForever />  
