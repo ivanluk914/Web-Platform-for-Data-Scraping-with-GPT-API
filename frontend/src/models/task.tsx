@@ -22,7 +22,8 @@ export enum TaskPeriod {
   Minutely = 2, // Just for demo
   Hourly = 3,
   Daily = 4,
-  Weekly = 5
+  Weekly = 5,
+  Monthly = 6
 }
 
 export interface Task {
