@@ -18,10 +18,12 @@ export enum OutputType {
 
 export enum TaskPeriod {
   Unknown = 0,
-  Hourly = 1,
-  Daily = 2,
-  Weekly = 3,
-  Monthly = 4
+  Single = 1,
+  Minutely = 2, // Just for demo
+  Hourly = 3,
+  Daily = 4,
+  Weekly = 5,
+  Monthly = 6
 }
 
 export interface Task {
@@ -82,8 +84,9 @@ export const outputTypeMap: Record<string, OutputType> = {
 };
 
 export const periodMap: Record<string, TaskPeriod> = {
+  Single: TaskPeriod.Single,
+  Minutely: TaskPeriod.Minutely,
   Hourly: TaskPeriod.Hourly,
   Daily: TaskPeriod.Daily,
-  Weekly: TaskPeriod.Weekly,
-  Monthly: TaskPeriod.Monthly
+  Weekly: TaskPeriod.Weekly
 };

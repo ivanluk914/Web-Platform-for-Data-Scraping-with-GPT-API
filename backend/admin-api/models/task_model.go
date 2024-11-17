@@ -47,6 +47,8 @@ type TaskPeriod int64
 
 const (
 	TaskPeriodUnknown TaskPeriod = iota
+	TaskPeriodSingle
+	TaskPeriodMinutely
 	TaskPeriodHourly
 	TaskPeriodDaily
 	TaskPeriodWeekly
@@ -119,6 +121,15 @@ type Task struct {
 	TaskDefinition json.RawMessage `json:"task_definition" gorm:"type:jsonb"`
 	Status         TaskStatus      `json:"status"`
 	AirflowTaskId  string          `json:"airflow_task_id"`
+}
+
+func GetAllTasks(ctx context.Context) ([]Task, error) {
+	var tasks []Task
+	result := db.WithContext(ctx).Find(&tasks)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return tasks, nil
 }
 
 func GetTasksByUserId(ctx context.Context, uid string) ([]Task, error) {

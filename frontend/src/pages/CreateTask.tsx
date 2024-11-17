@@ -1,14 +1,13 @@
 import { useState , useEffect} from 'react';
-import { Button, Card, CardBody, DateInput , Input, Spacer } from '@nextui-org/react';
+import { Button, Card, CardBody, Input } from '@nextui-org/react';
 import { Autocomplete, AutocompleteItem } from "@nextui-org/react";
-import { CalendarDate } from "@internationalized/date";
 import { useNavigate } from 'react-router-dom';
 import { Chip } from "@nextui-org/react";
 import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'react-hot-toast';
 import { useHttp } from '../providers/http-provider';
 import { validateURL, validateNonEmptyArray, validatePositiveInteger } from '../utils/validationUtils';
-import { outputTypeMap, periodMap, taskRunTypeMap, TaskRunType, TargetType } from '../models/task';
+import { outputTypeMap, periodMap, TaskPeriod, TargetType } from '../models/task';
 import { FiTrash2, FiPlus } from 'react-icons/fi';
 
 const TaskCreation = () => {
@@ -23,15 +22,6 @@ const TaskCreation = () => {
     { label: "JSON", value: "JSON" },
     { label: "MARKDOWN", value: "MARKDOWN" }
   ];
-  // const today = new Date();
-  // const [startDate, setStartDate] = useState<CalendarDate | null>(
-  //   new CalendarDate(today.getFullYear(), today.getMonth() + 1, today.getDate())
-  // );
-  // const [endDate, setEndDate] = useState<CalendarDate | null>(
-  //   new CalendarDate(today.getFullYear(), today.getMonth() + 1, today.getDate())
-  // );
-  // const [frequency,setFrequency]=useState('')
-  // const [frequencyUnit,setFrequencyUnit]=useState('')
 
   const [keywords, setKeywords] = useState(['']);
   const [dataTypes, setDataTypes] = useState(['']);
@@ -39,10 +29,7 @@ const TaskCreation = () => {
   const [GPTResponse, setGPTResponse] = useState('');
   const [fullResponse, setFullResponse] = useState('');
   const [canCreateTask, setCanCreateTask] = useState(false);
-  // const [taskRunType, setTaskRunType] = useState<TaskRunType>(TaskRunType.Unknown);
-  // const isPeriodicTask = taskRunType === TaskRunType.Periodic;
-
-
+  const [taskRunType, setTaskRunType] = useState<TaskPeriod>(TaskPeriod.Unknown);
 
   const http = useHttp(); // Use the useHttp hook
 
@@ -54,14 +41,10 @@ const TaskCreation = () => {
         keywords,
         dataTypes,
         outputFormat,
-        // startDate,
-        // endDate,
-        // frequency,
-        // frequencyUnit,
       });
 
       const data = response.data;
-      console.log('data', data);
+      // console.log('data', data);
       if (data.error) {
         console.error('Error from backend:', data.error);
         if (data.error === "Error communicating with GPT: Error communicating with OpenAI: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))") {
@@ -102,9 +85,8 @@ const TaskCreation = () => {
     const areKeywordsFilled = validateNonEmptyArray(keywords);
     const areDataTypesFilled = validateNonEmptyArray(dataTypes);
     const isURLValid = validateURL(sourceURL);
-    
-    // if (!sourceURL || !areKeywordsFilled || !areDataTypesFilled || !outputFormat || !startDate || !endDate ) {
-    if (taskName === '' || !sourceURL || !areKeywordsFilled || !areDataTypesFilled || !outputFormat ) {
+
+    if (taskName === '' || !sourceURL || !areKeywordsFilled || !areDataTypesFilled || !outputFormat || !taskRunType) {
     toast.error('Please fill in all required fields before proceeding.');
       return;
     }
@@ -113,23 +95,6 @@ const TaskCreation = () => {
       toast.error('Please enter a valid URL.');
       return;
     }
-    // if (taskRunType === TaskRunType.Unknown) {
-    //   toast.error('Please select a task run type.');
-    //   return;
-    // }
-    // if (taskRunType === TaskRunType.Periodic) {
-    //   const isFrequencyValid = validatePositiveInteger(frequency);
-
-    //   if (!frequency || !frequencyUnit) {
-    //     toast.error('Please fill in frequency and frequency unit for periodic tasks.');
-    //     return;
-    //   }
-
-    //   if (!isFrequencyValid) {
-    //     toast.error('Frequency must be a positive integer.');
-    //     return;
-    //   }
-    // }
 
     sendTaskToBackend();
     setIsVisible('none');
@@ -144,7 +109,7 @@ const TaskCreation = () => {
 
   const handleDataTypeChange = (index: number, value: string) => {
     const updatedDataTypes = [...dataTypes];
-    updatedDataTypes[index] = value; 
+    updatedDataTypes[index] = value;
     setDataTypes(updatedDataTypes);
   };
 
@@ -153,22 +118,22 @@ const TaskCreation = () => {
     setKeywords((prevKeywords) => [...prevKeywords, '']);
     setDataTypes((prevDataTypes) => [...prevDataTypes, '']);
   };
-  
+
   const removeField = (index: number) => {
     //del function forset datatypes and key words
     if (keywords.length > 1 && dataTypes.length > 1) {
       const updatedKeywords = [...keywords];
       const updatedDataTypes = [...dataTypes];
-      
+
       updatedKeywords.splice(index, 1);
       updatedDataTypes.splice(index, 1);
-    
+
       setKeywords(updatedKeywords);
       setDataTypes(updatedDataTypes);
     }
   };
 
-// preview page 
+// preview page
   useEffect(() => {
   }, [isVisible]);
 
@@ -183,43 +148,52 @@ const TaskCreation = () => {
       }
       try {
         const taskDefinition = {
-          type: 1, // single TaskRunType
+          type: taskRunType, // TaskRunType: {1: Single, 2: Minute, 3: Hourly, 4: Daily, 5: Weekly, 6: Monthly}
           source: [{ type: 1, url: sourceURL }],
           target: keywords.map((keyword, index) => ({
             type: 1, // Auto Target for now
             name: keyword,
             value: dataTypes[index]
           })),
-          output: [{ 
-          type: outputTypeMap[outputFormat],
-          name: outputFormat, 
-          value: GPTResponse
-          }, 
-          {
-            type: outputTypeMap[outputFormat],
-            name: outputFormat,
-            value: fullResponse
-          }],
-          // period: isPeriodicTask ? periodMap[frequencyUnit] : undefined
-          // dateRange is not implemented in BE yet
-          // dateRange: {
-          //   start: startDate,
-          //   end: endDate
-          // }
+          output: [
+            {
+              type: outputTypeMap[outputFormat],
+              name: "preview",
+              value: GPTResponse
+            },
+            {
+              type: outputTypeMap[outputFormat],
+              name: "full",
+              value: fullResponse
+            }
+          ],
+          period: taskRunType
         };
 
         const TaskDetails = {
           task_definition: taskDefinition,
           task_name: taskName,
-          deleted_at:null,
+          deleted_at: null,
+          status: 1,
         };
 
-        const response = await http.post(`/user/${user?.sub}/task`, TaskDetails);
-        console.log('task details', TaskDetails);
+        const response = await http.post(`/user/${user?.sub}/task`, TaskDetails); // to admin-api
+        // console.log('task details', TaskDetails);
+        const taskId = response.data.ID;
+        // task is created successfully
         if (response.status === 201) {
           toast.success(`Task created successfully!`);
           localStorage.removeItem('hasCreatedTask');
-          navigate('/home'); 
+          if (taskRunType === TaskPeriod.Single) {
+            TaskDetails.status = 3;
+            await http.put(`/user/${user?.sub}/task/${taskId}`, TaskDetails);
+          } else {
+            // TODO:create schedule
+            TaskDetails.status = 1;
+            http.put(`http://localhost:5001/api/${user?.sub}/task/${taskId}`, { TaskDetails });
+          }
+          http.put(`http://localhost:5001/api/${user?.sub}/task/${taskId}/summary`, { TaskDetails });
+          navigate('/home');
         }
       } catch (error: any) {
         console.error('Error creating task:', error);
@@ -239,15 +213,6 @@ const TaskCreation = () => {
         toast.error('Failed to create task. Please try again.');
       }
     };
-
-  // const handleDateChange = (setter: React.Dispatch<React.SetStateAction<CalendarDate | null>>) => (date: CalendarDate | null) => {
-  //   if (date) {
-  //     setter(date);
-  //   } else {
-  //     const defaultDate = new CalendarDate(today.getFullYear(), today.getMonth(), today.getDate());
-  //     setter(defaultDate);
-  //   }
-  // };
 
   return (
     <div className="container mx-auto">
@@ -275,12 +240,12 @@ const TaskCreation = () => {
           {/* Source URL Field */}
           <div className="mb-5">
             <Input
-              type="URL" 
+              type="URL"
               label="Source URL"
               placeholder="e.g https://abc.com.au"
-              value={sourceURL} 
-              onChange={(e) => setSourceURL(e.target.value)} 
-              style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }} 
+              value={sourceURL}
+              onChange={(e) => setSourceURL(e.target.value)}
+              style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
             />
           </div>
           <div className="space-y-3">
@@ -327,7 +292,7 @@ const TaskCreation = () => {
                 </div>
               </div>
             ))}
-            
+
             {/* Add New Button */}
             <Button
               type="button"
@@ -349,80 +314,31 @@ const TaskCreation = () => {
               placeholder="Select an output format"
               className="max-w-xs"
               defaultItems={form1}
-              onSelectionChange={(value) => setOutputFormat(value)} 
+              onSelectionChange={(value) => setOutputFormat(value)}
             >
               {(item) => <AutocompleteItem key={item.label}>{item.value}</AutocompleteItem>}
             </Autocomplete>
 
           </div>
-          {/* <div className="w-full flex flex-col gap-4">
-              <div key={variants} className="flex w-full flex-wrap md:flex-nowrap mb-6 md:mb-0 gap-4 mt-4">
-                <DateInput 
-                variant={variants} label={"Start date"} 
-                placeholderValue={startDate}  
-                value={startDate} 
-                onChange={handleDateChange(setStartDate)} 
-                />
-                
-              </div>  
-          </div>  
-          <div className="w-full flex flex-col gap-4 mb-4">
-              <div key={variants} className="flex w-full flex-wrap md:flex-nowrap mb-6 md:mb-0 gap-4 mt-4">
-                <DateInput variant={variants} label={"End date"} 
-                placeholderValue={endDate}  
-                value={endDate} 
-                onChange={handleDateChange(setEndDate)} 
-                />
-              </div>
-          </div> */}
 
           {/* Task Run Type Field */}
-        {/* <div className="mb-4">
+        <div className="mb-4">
           <Autocomplete
-            label="Task run type"
+            label="Task Run Type"
             placeholder="Select task run type"
             defaultItems={[
               { label: "Single", value: "Single" },
-              { label: "Periodic", value: "Periodic" }
+              { label: "Minutely", value: "Minutely" },
+              { label: "Hourly", value: "Hourly" },
+              { label: "Daily", value: "Daily" },
+              { label: "Weekly", value: "Weekly" },
+              { label: "Monthly", value: "Monthly" }
             ]}
-            onSelectionChange={(value) => setTaskRunType(taskRunTypeMap[value as string])}
+            onSelectionChange={(value) => setTaskRunType(periodMap[value as string])}
           >
             {(item) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
           </Autocomplete>
-        </div>   */}
-
-        {/* Conditional rendering for frequency and frequency unit */}
-        {/* {isPeriodicTask && ( */}
-          <>
-            {/* frequency Field */}
-            {/* <div className="mb-4">
-              <Input
-                type="text" 
-                label="Frequency"
-                placeholder="e.g 5"
-                value={frequency}
-                onChange={(e) => setFrequency(e.target.value)} 
-                style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
-              />
-            </div> */}
-            {/*Frequency Unit*/}
-            {/* <div className="mb-4">
-              <Autocomplete
-                label="Frequency Unit"
-                placeholder="Search or select a Unit"
-                defaultItems={[
-                  { label: "Hourly", value: "Hourly" },
-                  { label: "Daily", value: "Daily" },
-                  { label: "Weekly", value: "Weekly" },
-                  { label: "Monthly", value: "Monthly" }
-                ]}
-                onSelectionChange={(value) => setFrequencyUnit(value as string)}
-              >
-                {(item) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
-              </Autocomplete>
-            </div> */}
-          </>
-        {/* )} */}
+        </div>
 
           {/* Update Profile Button */}
           <Button type="submit" className="w-36 bg-black text-white" onClick={previewButton}>
@@ -433,18 +349,29 @@ const TaskCreation = () => {
         {/* Title */}
         <h1 className="text-3xl font-bold mb-2 text-black">Create Task Preview</h1>
         {/* Description */}
+        <p className="text-blue-600 mb-4">
+          Note: Preview shows up to 3 results. The full task will extract all matching data.
+        </p>
+
         <div
           className="bg-gray-100 text-black p-2 rounded-lg w-full mb-3"
           style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
-        >{sourceURL}
+        ><strong>Task Name: </strong>{taskName}
         </div>
-        
+
+        {/* Source URL */}
+        <div
+          className="bg-gray-100 text-black p-2 rounded-lg w-full mb-3"
+          style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}
+        ><strong>Source URL: </strong>{sourceURL}
+        </div>
+
         {keywords.length > 0 && keywords[0] !== '' && (
           <div>
           <div className="bg-gray-100 text-black p-1 rounded-lg w-full mb-3" style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}>
           <strong>Keywords:</strong>
             {keywords.map((item, index) => (
-              <Chip 
+              <Chip
                 key={index}
                 variant="flat"
                 color="primary"
@@ -461,25 +388,15 @@ const TaskCreation = () => {
           <strong>Output Format:</strong> {outputFormat}
         </div>
           {/* Task Run Type */}
-          {/* <div className="bg-gray-100 text-black p-2 rounded-lg w-full mb-4" style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}>
-            <strong>Task Run Type:</strong> {TaskRunType[taskRunType]}
-          </div> */}
-          {/* Start Date End Date*/}
-          {/* <div className="bg-gray-100 text-black p-2 rounded-lg w-full mb-4" style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}>
-            <strong>Start Date:</strong> {startDate?.toString()} <Spacer /> <strong>End Date:</strong> {endDate?.toString()}
-          </div> */}
-          
-        {/* Conditional rendering for frequency and frequency unit in preview
-        {isPeriodicTask && (
           <div className="bg-gray-100 text-black p-2 rounded-lg w-full mb-4" style={{ backgroundColor: '#E5E7EB', color: '#1F2937' }}>
-            <strong>Frequency:</strong> {frequency} {frequencyUnit}
+            <strong>Task Run Type:</strong> {TaskPeriod[taskRunType]}
           </div>
-        )} */}
+
         <div className="mt-4">
           <pre
             className="bg-gray-100 text-black p-2 rounded-lg w-full whitespace-pre-wrap"
-            style={{ 
-              backgroundColor: '#E5E7EB', 
+            style={{
+              backgroundColor: '#E5E7EB',
               color: '#1F2937',
               fontFamily: 'inherit'
             }}

@@ -28,6 +28,25 @@ func NewTaskService(logger *otelzap.Logger, taskRunMetadataRepository ArtifactRe
 	return &TaskService{logger: logger, taskRunArtifactRepository: taskRunMetadataRepository}
 }
 
+func (s *TaskService) GetAllTasks(ctx context.Context) ([]models.TaskDto, error) {
+	tasks, err := models.GetAllTasks(ctx)
+	if err != nil {
+		s.logger.Ctx(ctx).Error("Failed find tasks", zap.Error(err))
+		return nil, err
+	}
+
+	taskDtos := []models.TaskDto{}
+	for _, task := range tasks {
+		taskDto, err := s.MapTaskToDto(ctx, &task)
+		if err != nil {
+			s.logger.Ctx(ctx).Error("Error while mapping task to dto", zap.Error(err))
+			return nil, err
+		}
+		taskDtos = append(taskDtos, *taskDto)
+	}
+	return taskDtos, nil
+}
+
 func (s *TaskService) GetTasksByUserId(ctx context.Context, userId string) ([]models.TaskDto, error) {
 	tasks, err := models.GetTasksByUserId(ctx, userId)
 	if err != nil {
