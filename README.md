@@ -2,7 +2,15 @@
 
 ## Overview
 
-This project is a robust, scalable Admin API built with Go, leveraging modern cloud-native technologies and best practices for observability, performance, and reliability.
+This project is a web scraping automation platform that allows users to schedule and manage data collection tasks from websites. Built with Go and React, it features:
+
+- Intelligent data extraction using GPT for parsing and summarizing scraped content
+- Flexible scheduling options (one-time, daily, weekly, monthly)
+- Multiple output formats (JSON, CSV, Markdown)
+- Real-time task monitoring and management
+- Automated data collection with customizable targets and keywords
+
+The platform combines modern cloud-native technologies with AI-powered scraping capabilities to provide reliable, scalable web data extraction services.
 
 ## Key Features
 
