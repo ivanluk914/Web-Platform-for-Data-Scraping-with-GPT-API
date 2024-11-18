@@ -180,6 +180,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.2.2
+    restart: always
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_AUTH_ANONYMOUS_ENABLED=true
