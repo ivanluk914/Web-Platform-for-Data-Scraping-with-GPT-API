@@ -188,7 +188,6 @@ const TaskCreation = () => {
             TaskDetails.status = 3;
             await http.put(`/user/${user?.sub}/task/${taskId}`, TaskDetails);
           } else {
-            // TODO:create schedule
             TaskDetails.status = 1;
             http.put(`http://localhost:5001/api/${user?.sub}/task/${taskId}`, { TaskDetails });
           }
