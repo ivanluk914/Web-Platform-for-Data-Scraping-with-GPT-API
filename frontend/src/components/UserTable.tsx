@@ -384,7 +384,7 @@ const UserTable = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="mt-4 w-full max-w-md">
+        <div className="mt-4 w-full max-w-md" aria-label="Loading">
           {[...Array(5)].map((_, index) => (
             <Skeleton key={index} className="h-8 mb-2" />
           ))}
@@ -494,5 +494,7 @@ const UserTable = ({
     </>
   );
 };
+
+
 
 export default UserTable;
