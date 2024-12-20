@@ -1,8 +1,8 @@
-# Admin API Project
+# Web Platform for Data Scraping 
 
 ## Overview
 
-This project is a web scraping automation platform that allows users to schedule and manage data collection tasks from websites. Built with Go and React, it features:
+This project is a web scraping automation platform that allows non-tech background users to schedule and manage data collection tasks from websites. Built with Go and React, it features:
 
 - Intelligent data extraction using GPT for parsing and summarizing scraped content
 - Flexible scheduling options (one-time, daily, weekly, monthly)
